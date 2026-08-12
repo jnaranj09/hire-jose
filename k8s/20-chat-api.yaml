@@ -27,7 +27,7 @@ spec:
             # "default" = the dark palette. "paper" = the light one.
             # scripts/set-theme.sh changes this one word and pushes.
             - name: SITE_THEME
-              value: "default"
+              value: "paper"
             # ------------------------------------------------------------
           envFrom:
             - configMapRef:
