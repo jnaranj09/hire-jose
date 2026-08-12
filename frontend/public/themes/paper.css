@@ -1,0 +1,22 @@
+/* paper — the same page, flipped from dark to light.
+   Only the :root variables change, so every rule in site.css and chat.css
+   follows along. This is the file SITE_THEME=paper selects. */
+
+:root {
+  --ink: #f2ece2;
+  --slate: #e2dccf;
+  --card: #fbf7f0;
+  --edge: #cbbfa8;
+  --edge-warm: #e0c9ad;
+  --edge-cool: #bcccd2;
+  --green: #0a7a43;
+  --green-lo: #dcebe0;
+  --orange: #c2410c;
+  --gold: #8a6d1f;
+  --cyan: #0369a1;
+  --paper: #2b2b28;
+  --text: #24241f;
+  --muted: #5f5c53;
+  --slate-mut: #8c8578;
+  --rail: #cfc4ad;
+}

@@ -51,6 +51,13 @@ export const config = {
     rateLimitWindowSeconds: int('RATE_LIMIT_WINDOW', 60)
   },
 
+  // Which file under frontend/public/themes is served as /assets/theme.css.
+  // Lowercase letters, digits and dashes only — the value lands in a file
+  // path, so anything else is thrown away and 'default' is used instead.
+  theme: /^[a-z0-9-]+$/.test(process.env.SITE_THEME ?? '')
+    ? process.env.SITE_THEME
+    : 'default',
+
   paths: {
     persona: process.env.PERSONA_PATH ?? path.join(repoRoot, 'prompts/persona.md'),
     reminder: process.env.REMINDER_PATH ?? path.join(repoRoot, 'prompts/reminder.md'),

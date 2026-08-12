@@ -51,6 +51,21 @@ function staticSite(publicPath) {
   });
 }
 
+// /assets/theme.css is not a file on disk — it is whichever theme the
+// SITE_THEME setting names. That setting comes from a ConfigMap in git, so
+// changing one word there repaints the whole page on the next rollout.
+function themeSheet(publicPath, theme) {
+  return (req, res) => {
+    res.set('cache-control', 'no-store');
+    res.type('text/css');
+    res.sendFile(path.join(publicPath, 'themes', `${theme}.css`), (err) => {
+      // An unknown theme name should not take the page down; it just means
+      // the base palette in site.css stays as it is.
+      if (err) res.status(200).end('');
+    });
+  };
+}
+
 export async function createApp(config) {
   const knowledge = await loadKnowledge({
     personaPath: config.paths.persona,
@@ -109,6 +124,8 @@ export async function createApp(config) {
       ]
     })
   );
+
+  app.get('/assets/theme.css', themeSheet(config.paths.public, config.theme));
 
   // Last, so /api never falls through to a file.
   app.use(staticSite(config.paths.public));

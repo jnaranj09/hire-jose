@@ -19,7 +19,7 @@ defaults http
   timeout queue 15s
 
 frontend stats
-  bind 127.0.0.1:${LB_STATS_PORT}
+  bind ${LB_BIND}:${LB_STATS_PORT}
   http-request use-service prometheus-exporter if { path /metrics }
   stats enable
   stats uri /
@@ -29,7 +29,7 @@ frontend stats
   stats show-legends
 
 frontend public
-  bind 127.0.0.1:${LB_PORT}
+  bind ${LB_BIND}:${LB_PORT}
   option socket-stats
   option http-ignore-probes
   compression algo gzip
@@ -52,7 +52,7 @@ frontend public
   # cloudflared is the only thing that connects, and it arrives on
   # loopback. Trust CF-Connecting-IP from there and from nowhere else,
   # otherwise a visitor could forge their own source address.
-  acl from_tunnel src 127.0.0.0/8 ::1
+  acl from_tunnel src ${TRUSTED_PROXY_CIDR} ::1
   acl has_cf_ip req.hdr(CF-Connecting-IP) -m found
   http-request set-src hdr_ip(CF-Connecting-IP) if from_tunnel has_cf_ip
 
@@ -105,7 +105,7 @@ backend chat_api
   # Answers stream token by token, so nothing may sit in a buffer.
   option http-no-delay
   option httpchk GET /api/health
-  server api 127.0.0.1:${CHAT_API_PORT} check
+  server api ${CHAT_API_HOST}:${CHAT_API_PORT} check
 
 # Rate-limit counters, one table per window.
 backend st_site

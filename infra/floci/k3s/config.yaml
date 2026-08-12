@@ -1,0 +1,9 @@
+# k3s server flags. k3s reads this file on top of its command line, so we can
+# add flags without touching the command floci builds.
+#
+# disable-network-policy: k3s ships kube-router as its NetworkPolicy controller.
+# On this host kube-router dies at startup -- it calls `iptables -t filter ...
+# -j MARK --set-xmark`, and the running kernel cannot load the xt_mark module,
+# so k3s panics and the container exits. Nothing in this demo uses
+# NetworkPolicy, so turning the controller off is the cheap fix.
+disable-network-policy: true

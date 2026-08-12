@@ -1,0 +1,28 @@
+# floci — AWS-compatible LOCAL EMULATOR. Not real AWS.
+# Its EKS service starts a real k3s container, so kubectl and ArgoCD
+# talk to a live Kubernetes API server.
+#
+# Needs the docker socket (floci starts the k3s container as a sibling)
+# and a rootful docker daemon — k3s does not come up under rootless.
+
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci
+    user: root
+    ports:
+      - "4566:4566"
+    environment:
+      FLOCI_PORT: 4566
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_DEFAULT_ACCOUNT_ID: "000000000000"
+      # Stock rancher/k3s crashes on this host (see k3s/config.yaml).
+      # Build it first:  docker build -t hire-jose/k3s:local ./k3s
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: hire-jose/k3s:local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/data
+    restart: unless-stopped
+
+volumes:
+  floci-data:

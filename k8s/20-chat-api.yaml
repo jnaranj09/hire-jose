@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-api
+  namespace: hire-jose
+  labels:
+    app: chat-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chat-api
+  template:
+    metadata:
+      labels:
+        app: chat-api
+    spec:
+      containers:
+        - name: chat-api
+          # Built locally and imported straight into the k3s node. floci's
+          # ECR is served over plain HTTP and containerd wants HTTPS, so the
+          # registry is skipped entirely — see scripts/load-images.sh.
+          image: hire-jose/chat-api:local
+          imagePullPolicy: Never
+          env:
+            # ---- the demo switch ---------------------------------------
+            # "default" = the dark palette. "paper" = the light one.
+            # scripts/set-theme.sh changes this one word and pushes.
+            - name: SITE_THEME
+              value: "default"
+            # ------------------------------------------------------------
+          envFrom:
+            - configMapRef:
+                name: chat-api-config
+            # Created by hand, never in git — see k8s/README.md.
+            - secretRef:
+                name: chat-api-secrets
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-api
+  namespace: hire-jose
+spec:
+  selector:
+    app: chat-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

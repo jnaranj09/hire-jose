@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chat-api-config
+  namespace: hire-jose
+data:
+  # SITE_THEME is deliberately NOT here — it lives in the Deployment. A
+  # change to a ConfigMap does not restart pods on its own, so putting the
+  # demo switch in the pod spec is what makes the rollout automatic.
+  HOST: "0.0.0.0"
+  PORT: "3000"
+
+  # Ollama stays on the host: the model is 4.7 GB and wants the laptop GPU,
+  # which the k3s node cannot reach. 172.17.0.1 is the docker bridge, i.e.
+  # the host as seen from inside the cluster.
+  OLLAMA_URL: "http://172.17.0.1:11434"
+  OLLAMA_MODEL: "hire-jose"
+
+  CHAT_SESSION_TTL: "43200"
+  MAX_REQUEST_LENGTH: "4000"
+  MAX_ANSWER_SENTENCES: "4"
+  RATE_LIMIT_REQUESTS: "20"
+  RATE_LIMIT_WINDOW: "60"

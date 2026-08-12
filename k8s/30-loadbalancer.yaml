@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadbalancer
+  namespace: hire-jose
+  labels:
+    app: loadbalancer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadbalancer
+  template:
+    metadata:
+      labels:
+        app: loadbalancer
+    spec:
+      containers:
+        - name: haproxy
+          image: hire-jose/loadbalancer:local
+          imagePullPolicy: Never
+          env:
+            # Inside a pod haproxy has to listen on every interface, and the
+            # API is a service name instead of loopback.
+            - name: LB_BIND
+              value: "0.0.0.0"
+            - name: CHAT_API_HOST
+              value: "chat-api.hire-jose.svc.cluster.local"
+            - name: CHAT_API_PORT
+              value: "3000"
+            - name: LB_PORT
+              value: "8080"
+            - name: LB_STATS_PORT
+              value: "5000"
+            # cloudflared reaches the pod through the node, so the real
+            # client address arrives from inside the cluster network, not
+            # from loopback. Only that range may set CF-Connecting-IP.
+            - name: TRUSTED_PROXY_CIDR
+              value: "10.42.0.0/16"
+            - name: LB_SITE_RATE
+              value: "300"
+            - name: LB_API_RATE
+              value: "30"
+            - name: LB_API_ERR_RATE
+              value: "20"
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: stats
+              containerPort: 5000
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+  namespace: hire-jose
+spec:
+  type: NodePort
+  selector:
+    app: loadbalancer
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      # cloudflared points at the k3s container's IP on this port.
+      nodePort: 30080
