@@ -1,0 +1,35 @@
+services:
+  loadbalancer:
+    build: ./loadbalancer
+    network_mode: host
+    environment:
+      LB_PORT: ${LB_PORT:-8080}
+      LB_STATS_PORT: ${LB_STATS_PORT:-5000}
+      CHAT_API_PORT: ${CHAT_API_PORT:-3000}
+      LB_SITE_RATE: ${LB_SITE_RATE:-300}
+      LB_API_RATE: ${LB_API_RATE:-30}
+      LB_API_ERR_RATE: ${LB_API_ERR_RATE:-20}
+    depends_on:
+      - chat-api
+    restart: unless-stopped
+
+  chat-api:
+    build: ./backend
+    network_mode: host
+    environment:
+      HOST: 127.0.0.1
+      PORT: ${CHAT_API_PORT:-3000}
+      CHAT_BOT_TOKEN: ${CHAT_BOT_TOKEN:?set CHAT_BOT_TOKEN in .env}
+      CHAT_BOT_SECRET: ${CHAT_BOT_SECRET:?set CHAT_BOT_SECRET in .env}
+      CHAT_SESSION_TTL: ${CHAT_SESSION_TTL:-43200}
+      OLLAMA_URL: ${OLLAMA_URL:-http://127.0.0.1:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-hire-jose}
+      MAX_REQUEST_LENGTH: ${MAX_REQUEST_LENGTH:-4000}
+      MAX_ANSWER_SENTENCES: ${MAX_ANSWER_SENTENCES:-4}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-20}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
+    volumes:
+      - ./prompts:/content/prompts:ro
+      - ./knowledge:/content/knowledge:ro
+      - ./frontend/public:/content/public:ro
+    restart: unless-stopped

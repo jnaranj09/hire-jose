@@ -1,0 +1,115 @@
+global
+  log stdout format raw local0 info
+  maxconn 4096
+  hard-stop-after 5m
+  stats timeout 1h
+
+# default settings common to all HTTP proxies below
+defaults http
+  mode http
+  option httplog
+  log global
+  option dontlognull
+  option http-buffer-request
+  timeout connect 5s
+  timeout client 65s
+  timeout server 130s
+  timeout http-request 15s
+  timeout http-keep-alive 2m
+  timeout queue 15s
+
+frontend stats
+  bind 127.0.0.1:${LB_STATS_PORT}
+  http-request use-service prometheus-exporter if { path /metrics }
+  stats enable
+  stats uri /
+  stats show-modules
+  stats refresh 15s
+  stats show-node
+  stats show-legends
+
+frontend public
+  bind 127.0.0.1:${LB_PORT}
+  option socket-stats
+  option http-ignore-probes
+  compression algo gzip
+  compression type text/html text/css text/plain application/javascript image/svg+xml
+  unique-id-format %[uuid()]
+  unique-id-header X-Unique-ID
+
+  #### Logging config
+  # %HP drops the query string, so the access token in the page URL never
+  # reaches the log. Chat requests carry a session token as the last path
+  # segment, so that segment is replaced before logging.
+  acl is_chat path_beg /api/chat/
+  http-request set-var(txn.logpath) path
+  http-request set-var(txn.logpath) str(/api/chat/-) if is_chat
+
+  capture request header User-Agent len 90
+  log-format "%ci %ST %B %Tr %HM %[var(txn.logpath)] %ID %{+Q}[capture.req.hdr(0)]"
+
+  #### Real client address
+  # cloudflared is the only thing that connects, and it arrives on
+  # loopback. Trust CF-Connecting-IP from there and from nowhere else,
+  # otherwise a visitor could forge their own source address.
+  acl from_tunnel src 127.0.0.0/8 ::1
+  acl has_cf_ip req.hdr(CF-Connecting-IP) -m found
+  http-request set-src hdr_ip(CF-Connecting-IP) if from_tunnel has_cf_ip
+
+  #### Static ACLs
+  acl is_api      path_beg /api/
+  acl is_health   path     /api/health
+
+  # What a real browser looks like. Sec-Fetch-Site is the strongest signal:
+  # every modern browser sends it and page JavaScript is forbidden from
+  # setting it.
+  acl ua_present    req.hdr(user-agent)     -m found
+  acl ua_browser    req.hdr(user-agent)     -m reg -i ^Mozilla/5\.0
+  acl accept_sent   req.hdr(accept)         -m found
+  acl secfetch_sent req.hdr(sec-fetch-site) -m found
+  acl ua_scripted   req.hdr(user-agent)     -m sub -i curl/ wget/ python- python/ aiohttp go-http-client java/ okhttp libwww httpie postman insomnia scrapy guzzle node-fetch axios restsharp powershell httpx
+
+  #### Request hygiene
+  http-request deny deny_status 400 unless { req.hdr(host) -m found }
+  http-request deny deny_status 413 if { req.body_size gt 65536 }
+
+  #### Non-browser config
+  # Blocked on the API only. The public site stays open so crawlers can
+  # still index it.
+  http-request deny deny_status 403 if is_api !is_health ua_scripted
+  http-request deny deny_status 403 if is_api !is_health !ua_present
+  http-request deny deny_status 403 if is_api !is_health !ua_browser
+  http-request deny deny_status 403 if is_api !is_health !accept_sent
+  http-request deny deny_status 403 if is_api !is_health !secfetch_sent
+
+  #### Rate limiting config
+  # Counters live in their own backends so one client can be tracked
+  # against several windows at once.
+  http-request track-sc0 src table st_site
+  http-request track-sc1 src table st_api if is_api
+
+  http-request deny deny_status 429 if { sc_http_req_rate(0,st_site) gt ${LB_SITE_RATE} }
+  http-request deny deny_status 429 if is_api { sc_http_req_rate(1,st_api) gt ${LB_API_RATE} }
+  http-request deny deny_status 429 if is_api { sc_http_err_rate(1,st_api) gt ${LB_API_ERR_RATE} }
+
+  #### Response headers
+  http-response set-header X-Content-Type-Options nosniff
+  http-response set-header X-Frame-Options DENY
+  http-response set-header Referrer-Policy no-referrer
+  http-response set-header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+  default_backend chat_api
+
+# One backend: the same process serves the page and the chat.
+backend chat_api
+  # Answers stream token by token, so nothing may sit in a buffer.
+  option http-no-delay
+  option httpchk GET /api/health
+  server api 127.0.0.1:${CHAT_API_PORT} check
+
+# Rate-limit counters, one table per window.
+backend st_site
+  stick-table type ipv6 size 100k expire 5m store http_req_rate(1m)
+
+backend st_api
+  stick-table type ipv6 size 100k expire 10m store http_req_rate(1m),http_err_rate(5m)

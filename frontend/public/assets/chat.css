@@ -1,0 +1,32 @@
+.prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+
+.prompt {
+  font: 600 13.5px/1.35 var(--sans);
+  text-align: left;
+  color: #c6ccd2;
+  background: #1b1b19;
+  border: 1px solid #33403c;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+
+.prompt:hover,
+.prompt:focus-visible {
+  border-color: var(--green);
+  background: rgba(16, 159, 90, .1);
+  color: #fff;
+}
+
+@media (max-width: 560px) {
+  .prompts { flex-direction: column; }
+  .prompt { width: 100%; }
+}
