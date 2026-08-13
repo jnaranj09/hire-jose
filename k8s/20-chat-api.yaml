@@ -17,11 +17,12 @@ spec:
     spec:
       containers:
         - name: chat-api
-          # Built locally and imported straight into the k3s node. floci's
-          # ECR is served over plain HTTP and containerd wants HTTPS, so the
-          # registry is skipped entirely — see scripts/load-images.sh.
+          # GitHub Actions builds this on every push and rewrites the tag on
+          # this line, so the line itself is the deploy: ArgoCD sees the commit
+          # and rolls it. Tagged by commit, never :latest, so whatever is
+          # running can always be traced back to one.
+          # scripts/load-images.sh still works for local hacking.
           image: hire-jose/chat-api:local
-          imagePullPolicy: Never
           env:
             # ---- the demo switch ---------------------------------------
             # "default" = the dark palette. "paper" = the light one.

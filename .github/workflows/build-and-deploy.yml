@@ -1,0 +1,94 @@
+# Builds the two images and hands the new tag to ArgoCD by writing it into the
+# manifests. Nothing in this workflow talks to the cluster -- it only pushes to
+# GHCR and commits. ArgoCD is watching k8s/ and does the deploy itself.
+#
+# The loop that would otherwise happen (workflow commits -> workflow runs) is
+# broken by the paths filter below: this only triggers on the sources that go
+# into an image, never on k8s/, which is the only thing it writes.
+
+name: build and deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'loadbalancer/**'
+      - 'prompts/**'
+      - 'knowledge/**'
+      - '.github/workflows/build-and-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: build-and-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The owner has to be lowercase for a registry path; github.actor is not
+      # guaranteed to be.
+      - name: Work out the tag
+        id: meta
+        run: |
+          echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: chat-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.meta.outputs.owner }}/hire-jose-chat-api:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: loadbalancer
+        uses: docker/build-push-action@v6
+        with:
+          context: loadbalancer
+          file: loadbalancer/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.meta.outputs.owner }}/hire-jose-loadbalancer:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # This is the handover. The commit is the deploy request; ArgoCD decides
+      # when to act on it.
+      - name: Point the manifests at the new images
+        run: |
+          owner='${{ steps.meta.outputs.owner }}'
+          tag='${{ steps.meta.outputs.tag }}'
+
+          # Deliberately loose so the first run also rewrites the old local
+          # image names (hire-jose/chat-api:local) and not just ghcr ones.
+          sed -i -E "s|image: .*chat-api.*|image: ghcr.io/$owner/hire-jose-chat-api:$tag|" k8s/20-chat-api.yaml
+          sed -i -E "s|image: .*loadbalancer.*|image: ghcr.io/$owner/hire-jose-loadbalancer:$tag|" k8s/30-loadbalancer.yaml
+
+          if git diff --quiet -- k8s/; then
+            echo "manifests already on $tag, nothing to commit"
+            exit 0
+          fi
+
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -qam "Deploy $tag"
+          git push

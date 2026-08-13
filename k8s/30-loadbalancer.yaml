@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: haproxy
+          # Tag rewritten by the build workflow, same as chat-api.
           image: hire-jose/loadbalancer:local
-          imagePullPolicy: Never
           env:
             # Inside a pod haproxy has to listen on every interface, and the
             # API is a service name instead of loopback.

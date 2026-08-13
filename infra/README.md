@@ -38,7 +38,8 @@ aws eks create-cluster --name "$FLOCI_CLUSTER_NAME" \
 aws eks update-kubeconfig --name "$FLOCI_CLUSTER_NAME"
 kubectl get nodes
 
-# 4. build the app images into the node (no registry — see the script)
+# 4. only for local hacking. Normally GitHub Actions builds the images, pushes
+#    them to GHCR and writes the tag into k8s/, and ArgoCD deploys that commit.
 scripts/load-images.sh
 
 # 5. the secret. It is NOT in git and never should be.
