@@ -38,6 +38,12 @@ export function createAnalytics(log = console.log) {
     },
     requestRejected(reason) {
       emit('request_rejected', { reason });
+    },
+    themeSwitched(target, outcome) {
+      emit('theme_switch', { target, outcome });
+    },
+    themeSwitchFailed(reason) {
+      emit('theme_switch_failed', { reason });
     }
   };
 }

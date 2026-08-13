@@ -328,6 +328,9 @@ loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
               <p>That is the whole change. No kubectl, no pipeline. ArgoCD notices
                 the commit, rolls the Deployment, and the page goes from dark to
                 light on its own.</p>
+              <p>You can run it yourself: ask the assistant for the light theme
+                or the dark theme. It makes that commit and answers with the
+                link to it, plus the ArgoCD login to watch the sync.</p>
               <p class="note">The UI is published read-only: a dedicated account
                 bound to ArgoCD's built-in <code class="mono">role:readonly</code>.
                 It can read the app; sync and delete both come back

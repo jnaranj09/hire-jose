@@ -31,6 +31,16 @@ services:
       MAX_ANSWER_SENTENCES: ${MAX_ANSWER_SENTENCES:-4}
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-20}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
+      # Empty token: the assistant's theme switch stays off here. It still
+      # answers, it just does not commit anything.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-jnaranj09/hire-jose}
+      GITHUB_BRANCH: ${GITHUB_BRANCH:-main}
+      THEME_MANIFEST_PATH: ${THEME_MANIFEST_PATH:-k8s/20-chat-api.yaml}
+      THEME_COOLDOWN: ${THEME_COOLDOWN:-60}
+      ARGOCD_URL: ${ARGOCD_URL:-}
+      ARGOCD_USERNAME: ${ARGOCD_USERNAME:-viewer}
+      ARGOCD_PASSWORD: ${ARGOCD_PASSWORD:-}
     volumes:
       - ./prompts:/content/prompts:ro
       - ./knowledge:/content/knowledge:ro

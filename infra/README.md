@@ -43,10 +43,16 @@ kubectl get nodes
 scripts/load-images.sh
 
 # 5. the secret. It is NOT in git and never should be.
+#    GITHUB_TOKEN is what lets the assistant push the theme change itself:
+#    a fine-grained token, contents:write, this repo only. Leave it out and
+#    the switch is simply off. ARGOCD_PASSWORD is the read-only viewer
+#    account the answer hands to the visitor.
 kubectl create namespace hire-jose
 kubectl create secret generic chat-api-secrets -n hire-jose \
   --from-literal=CHAT_BOT_TOKEN="$(openssl rand -hex 16)" \
-  --from-literal=CHAT_BOT_SECRET="$(openssl rand -hex 32)"
+  --from-literal=CHAT_BOT_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=GITHUB_TOKEN="github_pat_..." \
+  --from-literal=ARGOCD_PASSWORD="<the viewer password>"
 
 # 6. ArgoCD. --server-side is required: the ApplicationSet CRD is larger than
 #    the 262144-byte annotation a client-side apply writes, so a plain
@@ -76,6 +82,17 @@ scripts/set-theme.sh paper
 That changes one word in `k8s/20-chat-api.yaml`, commits, and pushes. Nothing
 else. ArgoCD notices the new commit, rolls the Deployment, and the site goes
 from dark to light. `scripts/set-theme.sh default` puts it back.
+
+The visitor can run it too, without a shell. Asking the chat assistant "switch
+to the light theme" makes the same edit through the GitHub contents API, and
+the answer comes back with the commit link, what to watch for, and the
+read-only ArgoCD login. See "The one thing the assistant can do" in the root
+README.
+
+The account it hands out is the `viewer` one already in the cluster:
+`accounts.viewer: login` in `argocd-cm`, `g, viewer, role:readonly` in
+`argocd-rbac-cm`. Its password goes in `chat-api-secrets` as
+`ARGOCD_PASSWORD`, never in a manifest.
 
 ## Reaching the pods from the host
 

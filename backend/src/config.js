@@ -51,6 +51,30 @@ export const config = {
     rateLimitWindowSeconds: int('RATE_LIMIT_WINDOW', 60)
   },
 
+  // The theme switch the assistant can run for a visitor. It is on only when
+  // a GitHub token is present, so a checkout without one cannot commit
+  // anything. The token needs contents:write on this repo and nothing else.
+  themeDemo: {
+    cooldownSeconds: int('THEME_COOLDOWN', 60),
+
+    github: {
+      token: process.env.GITHUB_TOKEN ?? '',
+      repo: process.env.GITHUB_REPO ?? 'jnaranj09/hire-jose',
+      branch: process.env.GITHUB_BRANCH ?? 'main',
+      manifestPath: process.env.THEME_MANIFEST_PATH ?? 'k8s/20-chat-api.yaml',
+      apiUrl: process.env.GITHUB_API_URL ?? 'https://api.github.com',
+      timeoutMs: int('GITHUB_TIMEOUT_MS', 10000)
+    },
+
+    // Handed to the visitor with the answer so they can watch the sync. The
+    // account is read-only and the password still does not belong in git.
+    argocd: {
+      url: process.env.ARGOCD_URL ?? '',
+      username: process.env.ARGOCD_USERNAME ?? 'viewer',
+      password: process.env.ARGOCD_PASSWORD ?? ''
+    }
+  },
+
   // Which file under frontend/public/themes is served as /assets/theme.css.
   // Lowercase letters, digits and dashes only — the value lands in a file
   // path, so anything else is thrown away and 'default' is used instead.

@@ -21,3 +21,18 @@ data:
   MAX_ANSWER_SENTENCES: "4"
   RATE_LIMIT_REQUESTS: "20"
   RATE_LIMIT_WINDOW: "60"
+
+  # The assistant can push the theme change itself. It edits the SITE_THEME
+  # line in the file below, on GitHub, and ArgoCD deploys the commit. The
+  # switch stays off until GITHUB_TOKEN is in the secret — see k8s/README.md.
+  GITHUB_REPO: "jnaranj09/hire-jose"
+  GITHUB_BRANCH: "main"
+  THEME_MANIFEST_PATH: "k8s/20-chat-api.yaml"
+  # One push per minute. ArgoCD needs longer than that to finish a rollout,
+  # and two visitors asking at once should not fight over the branch.
+  THEME_COOLDOWN: "60"
+
+  # Handed to the visitor so they can watch the sync happen. The password is
+  # ARGOCD_PASSWORD in the secret, not here.
+  ARGOCD_URL: "https://argo.josenaranjo.website"
+  ARGOCD_USERNAME: "viewer"

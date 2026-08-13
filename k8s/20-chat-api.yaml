@@ -26,7 +26,9 @@ spec:
           env:
             # ---- the demo switch ---------------------------------------
             # "default" = the dark palette. "paper" = the light one.
-            # scripts/set-theme.sh changes this one word and pushes.
+            # scripts/set-theme.sh changes this one word and pushes. So does
+            # the assistant, when a visitor asks it to, through the GitHub
+            # contents API — same line, same commit, same rollout.
             - name: SITE_THEME
               value: "paper"
             # ------------------------------------------------------------

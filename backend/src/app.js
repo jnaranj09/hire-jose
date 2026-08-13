@@ -6,6 +6,7 @@ import { createAnalytics } from './analytics.js';
 import { loadKnowledge } from './knowledge.js';
 import { OllamaClient } from './ollama.js';
 import { createSessions, fingerprint } from './session.js';
+import { createThemeSwitcher } from './theme.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { requireSession } from './middleware/requireSession.js';
 import { validateQuestion } from './middleware/validateQuestion.js';
@@ -131,6 +132,12 @@ export async function createApp(config) {
     ttlSeconds: config.access.sessionTtlSeconds
   });
 
+  const theme = createThemeSwitcher({
+    ...config.themeDemo,
+    publicPath: config.paths.public,
+    analytics
+  });
+
   const limiter = () =>
     rateLimit({
       requests: config.limits.rateLimitRequests,
@@ -164,6 +171,7 @@ export async function createApp(config) {
       knowledge,
       ollama,
       analytics,
+      theme,
       limits: config.limits,
       guards: [
         limiter(),
