@@ -4,7 +4,7 @@ import { PromptLeakError, REFUSAL, createLeakDetector, isOverrideAttempt } from 
 import { buildMessages } from '../prompt.js';
 import { ResponseFilter } from '../response-filter.js';
 import { openStream } from '../sse.js';
-import { readThemeRequest } from '../theme.js';
+import { readLoginRequest, readThemeRequest } from '../theme.js';
 
 export function chatRoute({ knowledge, ollama, analytics, theme, limits, guards }) {
   const router = Router({ mergeParams: true });
@@ -53,6 +53,15 @@ export function chatRoute({ knowledge, ollama, analytics, theme, limits, guards 
     // model: it carries a commit id and a password, and neither survives a
     // 7B model paraphrasing them. It skips ResponseFilter for the same
     // reason — four sentences would cut it in half.
+    // The page promises the assistant will hand out the ArgoCD login, and the
+    // model has never seen it.
+    if (readLoginRequest(question)) {
+      analytics.themeSwitched('argocd-login', 'served');
+      emit(theme.login());
+      finish();
+      return;
+    }
+
     const themeRequest = readThemeRequest(question);
     if (themeRequest) {
       const { outcome, message } = await theme.run(themeRequest.target);

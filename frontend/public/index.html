@@ -135,12 +135,22 @@
       <article class="card card-warm">
         <span class="mark" aria-hidden="true">›</span>
         <p>
-          I love taking ownership of projects and always strive to deeply
-          understand key business needs to <span class="gold">drive value</span>.
+          I build the parts other people work on top of. Eight years in
+          infrastructure, four of them on
+          <span class="gold">self-managed production Kubernetes</span> and the
+          CI/CD around it.
         </p>
         <p>
-          For me, work isn't about completing tasks, it's about creating
-          <span class="gold">meaningful solutions</span> that make a difference.<span class="tail"></span>
+          Two things take most of my time. Feature environments — a full stack
+          per ticket, 88 workloads, up in five minutes, 32 running side by side.
+          And cutting manual work with
+          <span class="gold">AI tooling</span>: an 11-skill library my agents use
+          to run real production deploys, in daily use.
+        </p>
+        <p>
+          I own the rollback path and I carry the pager. So I would rather turn
+          an incident into a check that catches it next time than close the
+          ticket.<span class="tail"></span>
         </p>
       </article>
     </section>
@@ -152,15 +162,20 @@
         <span class="mark" aria-hidden="true">›</span>
 
         <p class="lede">
-          This page is the demo. There is no cloud host in front of it — it runs
-          on the machine under my desk, in a Kubernetes cluster it deploys itself
-          into, and reaches you through a tunnel.
+          There are tools I wanted to run that my job never gave me the chance
+          to. So I built this page with them. It runs on the computer under my
+          desk, not on a cloud host.
+        </p>
+        <p>
+          Read it next to my CV. The CV is what I run at work, in production.
+          This page is the rest: the things I have not been given in production
+          yet, running anyway, where you can check them yourself.
         </p>
         <p class="dim">
-          My CV splits skills into <b>Skilled</b> and <b>Beginner</b>. So does
-          this stack. Every hop below carries the same two labels, and the ones
-          I had never run before are marked as such. Pick a hop to see what it
-          does and the config that does it.
+          What you are reading now travelled from my machine to your browser
+          through the steps below. Each one tells you if I run it in production
+          or if this was my first time using it. Click any step to see how it
+          works and what you can try yourself.
         </p>
 
         <!-- signature: the request path -->
@@ -174,10 +189,17 @@
             </button>
             <div class="detail" id="d-tunnel" role="region" aria-labelledby="h-tunnel">
               <p>The only way in. This machine has no public IP and no port open
-                to the internet — HAProxy binds to loopback and the tunnel dials
-                out to Cloudflare.</p>
+                to the internet. HAProxy binds to loopback, and the tunnel dials
+                out to Cloudflare, so the connection is always outbound.</p>
               <pre class="code mono"><span class="c-cm"># loadbalancer/haproxy.cfg.template</span>
 bind 127.0.0.1:${LB_PORT}</pre>
+              <p>This is also what gates entry. Cloudflare only lets addresses
+                in Costa Rica and the US through; everyone else is stopped here,
+                before any of my machine is involved.</p>
+              <p class="try">Try it: run
+                <code class="mono">dig demo.josenaranjo.website</code>. You get
+                Cloudflare's addresses, never mine. There is nothing to scan and
+                no port to reach.</p>
               <p class="note">If the tunnel drops, the site is gone. Nothing else
                 is holding it up. That is the trade I made on purpose.</p>
             </div>
@@ -212,7 +234,11 @@ http-request deny deny_status 429 if is_api { sc_http_err_rate(1,st_api) gt 20 }
               <p class="note"><code class="mono">Sec-Fetch-Site</code> is the
                 strongest check: every current browser sends it, and page
                 JavaScript is forbidden from setting it. This filters, it does
-                not authenticate — the access token is what gates entry.</p>
+                not authenticate. Entry is gated one hop earlier, at Cloudflare.</p>
+              <p class="try">Try it: reload this page fast, ten or fifteen times.
+                Past <b>300</b> page requests a minute HAProxy answers
+                <b>429</b> and the application never sees you. It clears after a
+                minute.</p>
 
               <p class="sub-h">Also here</p>
               <ul class="facts">
@@ -246,6 +272,10 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
               <p class="note">Every request is stateless. Conversation history
                 never goes to the model, so nothing said earlier can steer a
                 later answer. Answers are cut after four sentences.</p>
+              <p class="try">Try it: open this page again with the
+                <code class="mono">?chat_bot_token=…</code> part cut off your
+                link. Same page, no chat — the widget is never built, and the
+                backend would refuse a session anyway.</p>
               <p class="sub-h">Measured with 49 adversarial prompts</p>
               <ul class="facts">
                 <li><b>14/14</b> injection attempts blocked — translation, base64, fake system tags, Spanish</li>
@@ -278,6 +308,10 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
               <p class="note">qwen2.5 wins on what matters here: it stays short
                 and it says "Jose has not used that" instead of inventing.
                 gemma3 invented Kafka experience and guessed a salary band.</p>
+              <p class="try">Try it: ask the assistant something I have
+                <b>not</b> done — "does Jose know Azure?". A model that wants to
+                please you invents an answer. This one should tell you no, and
+                name the closest thing I have actually run.</p>
             </div>
           </div>
 
@@ -306,6 +340,9 @@ loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
                 cannot load it itself — the module has to be on the host.</p>
               <p class="note">Ollama stays outside the cluster on purpose. A 4.7 GB
                 model on an 8 GB laptop GPU does not want to be scheduled.</p>
+              <p class="try">Try it: ask the assistant for the ArgoCD login. It
+                hands you a read-only account, and the resource tree you see
+                there is the live one — the two pods answering you right now.</p>
             </div>
           </div>
 
@@ -328,13 +365,16 @@ loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
               <p>That is the whole change. No kubectl, no pipeline. ArgoCD notices
                 the commit, rolls the Deployment, and the page goes from dark to
                 light on its own.</p>
-              <p>You can run it yourself: ask the assistant for the light theme
-                or the dark theme. It makes that commit and answers with the
-                link to it, plus the ArgoCD login to watch the sync.</p>
+              <p class="try">Try it: ask the assistant to switch the theme —
+                "make the site light". It writes that one word, pushes the
+                commit, and answers with the link to it plus the ArgoCD login so
+                you can watch the sync. Give it a few minutes and reload: this
+                page comes back in the other palette.</p>
               <p class="note">The UI is published read-only: a dedicated account
                 bound to ArgoCD's built-in <code class="mono">role:readonly</code>.
                 It can read the app; sync and delete both come back
-                <code class="mono">403 permission denied</code>.</p>
+                <code class="mono">403 permission denied</code>. The commit is
+                the only way in — for you, and for me.</p>
             </div>
           </div>
 
@@ -356,6 +396,10 @@ aws eks update-kubeconfig --name hire-jose</pre>
                 behind it is real, but none of it proves anything about running
                 EKS. The AWS I run at work is the other kind — S3, Transit
                 Gateway, Site-to-Site VPN, and Terraform-provisioned PrivateLink.</p>
+              <p class="try">Nothing to click on this one: the emulator listens
+                on localhost and is not published. You are already looking at its
+                output, though — the cluster every hop above runs in is the one
+                that <code class="mono">create-cluster</code> line started.</p>
             </div>
           </div>
 
@@ -363,18 +407,16 @@ aws eks update-kubeconfig --name hire-jose</pre>
 
         <p class="note rail-foot">Every hop is live as you read this. The
           machine under my desk is running all of it.<span class="tail"></span></p>
-      </article>
-    </section>
 
-    <!-- Ask -->
-    <section class="block reveal" id="ask" hidden>
-      <span class="chip chip-green">Ask about my work</span>
-      <article class="card card-cool">
-        <span class="mark" aria-hidden="true">›</span>
-        <p class="dim">The assistant on this page answers from my own notes, on a
-          model running on this same machine. No third-party AI service is
-          involved. It says so when something is not in the notes.</p>
-        <ul class="prompts" id="suggested-prompts"></ul>
+        <!-- Revealed by chat.js once the token in the link opens a session.
+             Without one the page is exactly this, minus the chat. -->
+        <div id="ask" hidden>
+          <p class="ask-h">Ask about my work</p>
+          <p class="dim">The assistant answers from my own notes, on the model in
+            the Ollama hop above. No third-party AI service is involved, and it
+            says so when something is not in the notes.</p>
+          <ul class="prompts" id="suggested-prompts"></ul>
+        </div>
       </article>
     </section>
 

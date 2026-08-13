@@ -23,6 +23,13 @@ const REQUEST = [
   /\b(cambia|cambiar|pon|poner|activa)\b[^.?!]{0,40}\b(tema|modo oscuro|modo claro|paleta)\b/i
 ];
 
+// The page tells the visitor they can ask for the login, so asking for it has
+// to return the login and not a model answer — the model does not have it.
+const LOGIN = [
+  /\bargo\s*-?cd?\b[^.?!]{0,40}\b(login|log in|credential|password|user|account|access|url|link|ui|dashboard)\b/i,
+  /\b(login|credential|password|user|account|access|url|link)\b[^.?!]{0,40}\bargo\s*-?cd?\b/i
+];
+
 const TO_LIGHT = /\b(light|paper|white|bright|day|claro)\b/i;
 const TO_DARK = /\b(dark|default|black|night|oscuro)\b/i;
 
@@ -36,12 +43,19 @@ function label(theme) {
 // { target: null } means "flip it", whichever way it is pointing right now.
 export function readThemeRequest(question) {
   if (EXPLAIN.test(question)) return null;
+  if (LOGIN.some((pattern) => pattern.test(question))) return null;
   if (!REQUEST.some((pattern) => pattern.test(question))) return null;
 
   if (TO_LIGHT.test(question)) return { target: 'paper' };
   if (TO_DARK.test(question)) return { target: 'default' };
 
   return { target: null };
+}
+
+// "What is the ArgoCD login" is a question, so EXPLAIN does not apply here:
+// asking for it IS the request, and only this file knows the answer.
+export function readLoginRequest(question) {
+  return LOGIN.some((pattern) => pattern.test(question));
 }
 
 function pushedMessage({ from, to, commit, commitUrl, argocd }) {
@@ -76,6 +90,24 @@ function argocdBlock(argocd) {
     'That account is read-only. Sync and delete both come',
     'back 403 permission denied. A commit is the only way in.'
   ];
+}
+
+function loginMessage(argocd) {
+  if (!argocd.url || !argocd.password) {
+    return 'The ArgoCD UI is not published on this copy of the site.';
+  }
+
+  return [
+    'The ArgoCD UI is open, read-only:',
+    '',
+    argocd.url,
+    `user: ${argocd.username}`,
+    `password: ${argocd.password}`,
+    '',
+    'Sync and delete both come back 403 permission denied.',
+    'Ask me to switch the theme if you want to watch it',
+    'deploy something.'
+  ].join('\n');
 }
 
 export function createThemeSwitcher({ github, argocd, cooldownSeconds, publicPath, analytics }) {
@@ -210,5 +242,5 @@ export function createThemeSwitcher({ github, argocd, cooldownSeconds, publicPat
     }
   }
 
-  return { enabled, run };
+  return { enabled, run, login: () => loginMessage(argocd) };
 }

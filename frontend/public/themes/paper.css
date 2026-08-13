@@ -14,6 +14,9 @@
   --orange: #c2410c;
   --gold: #8a6d1f;
   --cyan: #0369a1;
+  /* Already dark enough for the chip's white text — no separate value needed,
+     but the variable has to exist or the dark theme's leaks through. */
+  --chip-cyan: #0369a1;
   --paper: #2b2b28;
   --text: #24241f;
   --muted: #5f5c53;

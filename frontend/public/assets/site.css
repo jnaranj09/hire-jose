@@ -31,6 +31,9 @@
   --orange: #fd5a1b;
   --gold: #c8b779;
   --cyan: #0cc0df;
+  /* The chip carries white text on both themes, and white on the bright cyan
+     above is unreadable. This is the same hue, dark enough to hold it. */
+  --chip-cyan: #0b7f96;
   --paper: #dbcccc;
   --text: #d5d5d5;
   --muted: #a6a6a6;
@@ -341,7 +344,7 @@ a:hover { color: var(--paper); text-decoration-color: var(--green); }
 }
 .chip-orange { background: var(--orange); }
 .chip-green { background: var(--green); }
-.chip-cyan { background: var(--cyan); color: #10262b; }
+.chip-cyan { background: var(--chip-cyan); }
 .chip-flat { background: var(--surface-2); color: var(--paper); }
 
 .card {
@@ -558,6 +561,27 @@ a:hover { color: var(--paper); text-decoration-color: var(--green); }
 }
 
 .note { color: var(--text-dim); font-size: 13.5px; }
+
+/* Every hop ends with one of these: the thing the reader can go and do. It
+   has to look like an invitation, not like another note. */
+.try {
+  position: relative;
+  margin: 16px 0 0;
+  padding: 10px 13px 10px 34px;
+  font-size: 13.5px;
+  color: var(--text-soft);
+  background: var(--green-lo);
+  border: 1px solid var(--ok-edge);
+  border-radius: 8px;
+}
+.try::before {
+  content: "→";
+  position: absolute;
+  left: 13px;
+  font-family: var(--mono);
+  color: var(--green);
+}
+.try b { color: var(--paper); font-weight: 700; }
 
 .code {
   font-family: var(--mono);
