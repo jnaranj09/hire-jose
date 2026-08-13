@@ -129,6 +129,17 @@
   <!-- ── main ────────────────────────────────────────────────── -->
   <main class="main" id="main">
 
+    <!-- Shown by chat.js when the visitor arrives without the token in the
+         link, or with one the backend refuses. The page is complete without
+         it; the parts that ask you to talk to the assistant are not. -->
+    <p class="banner" id="no-chat" hidden>
+      <b>You are reading this without the private link.</b>
+      The chat assistant is not loaded, so the steps that ask you to talk to it,
+      like switching the theme or getting the ArgoCD login, cannot be reproduced
+      here. Everything else on the page is live and still worth opening.
+      Want the link? <a href="mailto:jmnaranjo09@gmail.com">jmnaranjo09@gmail.com</a>.
+    </p>
+
     <!-- About me -->
     <section class="block reveal">
       <span class="chip chip-orange">About me</span>
@@ -141,16 +152,17 @@
           CI/CD around it.
         </p>
         <p>
-          Two things take most of my time. Feature environments — a full stack
+          Two things take most of my time. Feature environments: a full stack
           per ticket, 88 workloads, up in five minutes, 32 running side by side.
           And cutting manual work with
           <span class="gold">AI tooling</span>: an 11-skill library my agents use
           to run real production deploys, in daily use.
         </p>
         <p>
-          I own the rollback path and I carry the pager. So I would rather turn
-          an incident into a check that catches it next time than close the
-          ticket.<span class="tail"></span>
+          I run three self-managed Kubernetes clusters, dev, stage and
+          production: 51 nodes and about 3,300 pods under real traffic. I carry
+          the pager for them, run the incidents, and write the
+          follow-up.<span class="tail"></span>
         </p>
       </article>
     </section>
@@ -161,7 +173,7 @@
       <article class="card card-cool">
         <span class="mark" aria-hidden="true">›</span>
 
-        <p class="lede">
+        <p>
           There are tools I wanted to run that my job never gave me the chance
           to. So I built this page with them. It runs on the computer under my
           desk, not on a cloud host.
@@ -171,7 +183,7 @@
           This page is the rest: the things I have not been given in production
           yet, running anyway, where you can check them yourself.
         </p>
-        <p class="dim">
+        <p>
           What you are reading now travelled from my machine to your browser
           through the steps below. Each one tells you if I run it in production
           or if this was my first time using it. Click any step to see how it
@@ -193,9 +205,10 @@
                 out to Cloudflare, so the connection is always outbound.</p>
               <pre class="code mono"><span class="c-cm"># loadbalancer/haproxy.cfg.template</span>
 bind 127.0.0.1:${LB_PORT}</pre>
-              <p>This is also what gates entry. Cloudflare only lets addresses
-                in Costa Rica and the US through; everyone else is stopped here,
-                before any of my machine is involved.</p>
+              <p>Cloudflare sits in front of it, so I can drop a request by
+                country or by network before it reaches my machine at all. I
+                filter my private services that way. This page I do not: anyone
+                should be able to read it, wherever they are.</p>
               <p class="try">Try it: run
                 <code class="mono">dig demo.josenaranjo.website</code>. You get
                 Cloudflare's addresses, never mine. There is nothing to scan and
@@ -218,11 +231,13 @@ bind 127.0.0.1:${LB_PORT}</pre>
 
               <p class="sub-h">Three separate rate limits</p>
               <pre class="code mono">http-request deny deny_status 429 if { sc_http_req_rate(0,st_site) gt 300 }
-http-request deny deny_status 429 if is_api { sc_http_req_rate(1,st_api) gt 20 }
+http-request deny deny_status 429 if is_api { sc_http_req_rate(1,st_api) gt 30 }
 http-request deny deny_status 429 if is_api { sc_http_err_rate(1,st_api) gt 20 }</pre>
-              <p class="note">The last one is the useful one. Somebody guessing
-                access tokens collects 401s and gets shut out on the error
-                counter long before they reach the request limit.</p>
+              <p class="note">The last one is the useful one. A wrong token comes
+                back <b>401</b> from the application; HAProxy counts those, and
+                once a client has 20 of them in five minutes it stops forwarding
+                the requests at all and answers <b>429</b> itself. A guesser is
+                out on the error counter, not the request one.</p>
 
               <p class="sub-h">What a scripted client gets</p>
               <table class="tbl">
@@ -234,18 +249,26 @@ http-request deny deny_status 429 if is_api { sc_http_err_rate(1,st_api) gt 20 }
               <p class="note"><code class="mono">Sec-Fetch-Site</code> is the
                 strongest check: every current browser sends it, and page
                 JavaScript is forbidden from setting it. This filters, it does
-                not authenticate. Entry is gated one hop earlier, at Cloudflare.</p>
-              <p class="try">Try it: reload this page fast, ten or fifteen times.
-                Past <b>300</b> page requests a minute HAProxy answers
-                <b>429</b> and the application never sees you. It clears after a
-                minute.</p>
+                not authenticate. Reading the page is meant to be open; the one
+                thing that needs a credential is the chat, and that is the token
+                in your link.</p>
+              <p class="try">Try it, from any terminal:
+                <code class="mono">curl -i https://demo.josenaranjo.website/api/session -d '{}'</code>.
+                You get <b>403</b>. Add
+                <code class="mono">-A "Mozilla/5.0"</code> and you still get
+                <b>403</b>. The page itself answers <b>200</b> to the same curl.
+                Only the API is closed to scripts.</p>
+              <p class="note">The rate limits are quieter than they look. One
+                reload of this page is three requests, fourteen if you force it
+                past the cache, so 300 a minute is aimed at a script rather than
+                at you.</p>
 
               <p class="sub-h">Also here</p>
               <ul class="facts">
                 <li>every request gets a <b>uuid</b>, logged and passed on as <code class="mono">X-Unique-ID</code></li>
-                <li>the session token is cut out of the path <b>before</b> anything is written to a log</li>
+                <li>HAProxy cuts the session token out of the path <b>before</b> anything reaches a log</li>
                 <li>stats page and <b>423</b> Prometheus metrics on a second frontend, loopback only</li>
-                <li>the config is a template — <code class="mono">envsubst</code>, then <code class="mono">haproxy -c</code>, so a bad value stops the container instead of shipping a broken edge</li>
+                <li>the config is a template: <code class="mono">envsubst</code>, then <code class="mono">haproxy -c</code>, so a bad value stops the container instead of shipping a broken edge</li>
               </ul>
             </div>
           </div>
@@ -259,28 +282,28 @@ http-request deny deny_status 429 if is_api { sc_http_err_rate(1,st_api) gt 20 }
             <div class="detail" id="d-node" role="region" aria-labelledby="h-node">
               <p>Serves this page and answers the chat, in one process. It is
                 also the only thing allowed to talk to the model. It holds the
-                sessions and the refusals — the persona asks the model to behave,
+                sessions and the refusals. The persona asks the model to behave;
                 the backend does not depend on it.</p>
-              <p class="note">There used to be an nginx container in front of the
-                files. It served four static files and nothing else, so it went
-                away: <code class="mono">express.static</code> does the same job
-                and the stack lost a container and a config template.</p>
+              <p class="note">There is no web server in front of it.
+                <code class="mono">express.static</code> serves the four static
+                files, which saves a container and a config template.</p>
               <pre class="code mono">GET  /?chat_bot_token=&lt;token&gt;        widget renders
 POST /api/session {chat_bot_token}   constant-time compare
                   → session = &lt;expiry&gt;.&lt;nonce&gt;.&lt;HMAC&gt;
 POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
               <p class="note">Every request is stateless. Conversation history
                 never goes to the model, so nothing said earlier can steer a
-                later answer. Answers are cut after four sentences.</p>
+                later answer. The backend cuts every answer after four
+                sentences.</p>
               <p class="try">Try it: open this page again with the
                 <code class="mono">?chat_bot_token=…</code> part cut off your
-                link. Same page, no chat — the widget is never built, and the
+                link. Same page, no chat. Nothing builds the widget, and the
                 backend would refuse a session anyway.</p>
               <p class="sub-h">Measured with 49 adversarial prompts</p>
               <ul class="facts">
-                <li><b>14/14</b> injection attempts blocked — translation, base64, fake system tags, Spanish</li>
-                <li><b>15/15</b> hallucination baits refused — jobs I never had, certs I do not hold</li>
-                <li><b>5</b> visitors at once — 4.5s worst case, no failures</li>
+                <li><b>14/14</b> injection attempts blocked: translation, base64, fake system tags, Spanish</li>
+                <li><b>15/15</b> hallucination baits refused: jobs I never had, certs I do not hold</li>
+                <li><b>5</b> visitors at once: 4.5s worst case, no failures</li>
               </ul>
             </div>
           </div>
@@ -309,7 +332,7 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
                 and it says "Jose has not used that" instead of inventing.
                 gemma3 invented Kafka experience and guessed a salary band.</p>
               <p class="try">Try it: ask the assistant something I have
-                <b>not</b> done — "does Jose know Azure?". A model that wants to
+                <b>not</b> done: "does Jose know Azure?". A model that wants to
                 please you invents an answer. This one should tell you no, and
                 name the closest thing I have actually run.</p>
             </div>
@@ -328,21 +351,21 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
                 docker.</p>
               <pre class="code mono">chat-api       ClusterIP  :3000
 loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
-              <p class="note">There is no registry. Images are built and imported
-                straight into the node's containerd, and the manifests say
-                <code class="mono">imagePullPolicy: Never</code> to match — the
-                emulated ECR serves plain HTTP and containerd insists on HTTPS.</p>
+              <p class="note">GitHub Actions builds both images, pushes them to
+                GHCR and writes the new tag into the manifest. That commit is the
+                deploy. floci has an emulated ECR and I do not use it: it serves
+                plain HTTP, and containerd insists on HTTPS.</p>
               <p class="sub-h">The one that cost me an evening</p>
               <p>Every pod DNS lookup timed out and nothing logged an error.
                 <code class="mono">br_netfilter</code> was not loaded on the host,
                 so bridged pod traffic never passed through iptables and
                 kube-proxy's ClusterIP rules never fired. The node container
-                cannot load it itself — the module has to be on the host.</p>
+                cannot load it itself; the module has to be on the host.</p>
               <p class="note">Ollama stays outside the cluster on purpose. A 4.7 GB
                 model on an 8 GB laptop GPU does not want to be scheduled.</p>
               <p class="try">Try it: ask the assistant for the ArgoCD login. It
                 hands you a read-only account, and the resource tree you see
-                there is the live one — the two pods answering you right now.</p>
+                there is the live one: the two pods answering you right now.</p>
             </div>
           </div>
 
@@ -365,16 +388,16 @@ loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
               <p>That is the whole change. No kubectl, no pipeline. ArgoCD notices
                 the commit, rolls the Deployment, and the page goes from dark to
                 light on its own.</p>
-              <p class="try">Try it: ask the assistant to switch the theme —
+              <p class="try">Try it: ask the assistant to switch the theme:
                 "make the site light". It writes that one word, pushes the
                 commit, and answers with the link to it plus the ArgoCD login so
                 you can watch the sync. Give it a few minutes and reload: this
                 page comes back in the other palette.</p>
-              <p class="note">The UI is published read-only: a dedicated account
+              <p class="note">I publish the UI read-only: a dedicated account
                 bound to ArgoCD's built-in <code class="mono">role:readonly</code>.
                 It can read the app; sync and delete both come back
                 <code class="mono">403 permission denied</code>. The commit is
-                the only way in — for you, and for me.</p>
+                the only way in, for you and for me.</p>
             </div>
           </div>
 
@@ -385,20 +408,20 @@ loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
               <span class="badge badge-gold">first time</span>
             </button>
             <div class="detail" id="d-aws" role="region" aria-labelledby="h-aws">
-              <p>The cluster above was created with the AWS CLI, against an
+              <p>I created the cluster above with the AWS CLI, against an
                 emulator running on this machine. There is no AWS account
                 anywhere in this and the credentials are the string
                 <code class="mono">test</code>.</p>
               <pre class="code mono">aws eks create-cluster --name hire-jose   <span class="c-cm"># → starts a real k3s container</span>
 aws eks update-kubeconfig --name hire-jose</pre>
-              <p class="note">Worth being exact about what this is and is not: it
-                emulates the AWS API, so the EKS call is real and the Kubernetes
-                behind it is real, but none of it proves anything about running
-                EKS. The AWS I run at work is the other kind — S3, Transit
+              <p class="note">It emulates the AWS API, so the EKS call is real
+                and the Kubernetes behind it is real. None of that proves
+                anything about running EKS. The AWS I run at work is the other
+                kind: S3, Transit
                 Gateway, Site-to-Site VPN, and Terraform-provisioned PrivateLink.</p>
               <p class="try">Nothing to click on this one: the emulator listens
                 on localhost and is not published. You are already looking at its
-                output, though — the cluster every hop above runs in is the one
+                output, though. The cluster every hop above runs in is the one
                 that <code class="mono">create-cluster</code> line started.</p>
             </div>
           </div>

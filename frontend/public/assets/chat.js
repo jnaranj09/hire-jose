@@ -63,15 +63,29 @@ function mountWidget(chatUrl) {
   });
 }
 
+// No chat is a normal way to read this page, not an error — but the hops ask
+// the visitor to talk to the assistant, so say up front that those parts will
+// not answer.
+function announceNoChat() {
+  document.querySelector('#no-chat')?.removeAttribute('hidden');
+}
+
 async function start() {
   const accessToken = readAccessToken();
-  if (!accessToken) return;
+  if (!accessToken) {
+    announceNoChat();
+    return;
+  }
 
   const configured = document.querySelector('meta[name="chat-api-url"]')?.content;
   const apiUrl = configured || window.location.origin;
 
+  // A token the backend refuses looks the same to a reader as no token at all.
   const session = await openSession(apiUrl, accessToken).catch(() => null);
-  if (!session) return;
+  if (!session) {
+    announceNoChat();
+    return;
+  }
 
   document.querySelector('#ask')?.removeAttribute('hidden');
 

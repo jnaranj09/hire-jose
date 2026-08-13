@@ -29,6 +29,22 @@
   color: var(--text);
 }
 
+/* Shown only to a visitor without a working token. Warm border, not red: the
+   page is not broken, it is just missing one part. */
+.banner {
+  margin: 0 0 26px;
+  padding: 12px 15px;
+  font-size: 13.8px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--gold-edge);
+  border-left: 3px solid var(--gold);
+  border-radius: 9px;
+}
+.banner b { color: var(--paper); }
+.banner a { color: var(--gold); }
+
 /* The ask block now lives inside the demo card, so it needs its own heading
    rule — .sub-h is scoped to .detail. */
 .ask-h {
