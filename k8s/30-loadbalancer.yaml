@@ -18,7 +18,7 @@ spec:
       containers:
         - name: haproxy
           # Tag rewritten by the build workflow, same as chat-api.
-          image: ghcr.io/jnaranj09/hire-jose-loadbalancer:a15357f
+          image: ghcr.io/jnaranj09/hire-jose-loadbalancer:ff97229
           env:
             # Inside a pod haproxy has to listen on every interface, and the
             # API is a service name instead of loopback.
