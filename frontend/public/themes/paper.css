@@ -19,4 +19,19 @@
   --muted: #5f5c53;
   --slate-mut: #8c8578;
   --rail: #cfc4ad;
+
+  /* The dark theme's greys, inverted. Without these the secondary text keeps
+     its light-grey value and vanishes against the paper background — which is
+     what made Education and the work cards unreadable. */
+  --text-soft: #33332e;
+  --text-dim: #6a675e;
+  --surface-2: #ece5d8;
+  --border-2: #cbbfa8;
+  --dot: #9a9384;
+  --hover-tint: rgba(0, 0, 0, .045);
+  /* The dark theme's mint green is unreadable on paper. */
+  --ok: #0a7a43;
+  --bad: #b3400c;
+  --ok-edge: #9ccbb0;
+  --gold-edge: #d3c08a;
 }

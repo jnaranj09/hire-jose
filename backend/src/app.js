@@ -1,4 +1,6 @@
+import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import express from 'express';
 import { createAnalytics } from './analytics.js';
 import { loadKnowledge } from './knowledge.js';
@@ -49,6 +51,55 @@ function staticSite(publicPath) {
       }
     }
   });
+}
+
+// index.html is served with max-age=0, but the CSS and JS it points at are
+// cached for an hour here and up to four at the Cloudflare edge. Without this,
+// deploying a stylesheet change and reloading still shows the old page until
+// that expires. Stamping a build id on the asset URLs sidesteps the whole
+// problem: new build, new URL, nothing to invalidate.
+function buildId(publicPath) {
+  const files = [
+    'assets/site.css', 'assets/chat.css',
+    'assets/site.js', 'assets/chat.js'
+  ];
+  const stamp = files
+    .map((f) => {
+      try {
+        return String(fs.statSync(path.join(publicPath, f)).mtimeMs);
+      } catch {
+        return '0';
+      }
+    })
+    .join('|');
+
+  return createHash('sha1').update(stamp).digest('hex').slice(0, 8);
+}
+
+// Rewrites /assets/<name>.(css|js) -> /assets/<name>.(css|js)?v=<build>.
+// theme.css is deliberately skipped: it is already no-store, and its content
+// changes with SITE_THEME rather than with a build.
+function indexPage(publicPath) {
+  const file = path.join(publicPath, 'index.html');
+  const version = buildId(publicPath);
+
+  return (req, res, next) => {
+    fs.readFile(file, 'utf8', (err, html) => {
+      if (err) {
+        next();
+        return;
+      }
+
+      res.set('cache-control', 'public, max-age=0, must-revalidate');
+      res.type('html');
+      res.send(
+        html.replace(
+          /(\/assets\/(?!theme\.css)[\w.-]+\.(?:css|js))/g,
+          `$1?v=${version}`
+        )
+      );
+    });
+  };
 }
 
 // /assets/theme.css is not a file on disk — it is whichever theme the
@@ -126,6 +177,10 @@ export async function createApp(config) {
   );
 
   app.get('/assets/theme.css', themeSheet(config.paths.public, config.theme));
+
+  // Before the static handler, or express.static answers / with the raw file
+  // and the asset URLs never get their build stamp.
+  app.get(['/', '/index.html'], indexPage(config.paths.public));
 
   // Last, so /api never falls through to a file.
   app.use(staticSite(config.paths.public));

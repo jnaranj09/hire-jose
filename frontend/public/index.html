@@ -42,12 +42,6 @@
       <ul class="contact">
         <li>
           <span class="ico ico-green" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .58 3.6 1 1 0 0 1-.25 1z"/></svg>
-          </span>
-          <a href="tel:+50650135162">+506 5013 5162</a>
-        </li>
-        <li>
-          <span class="ico" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
           </span>
           <a href="mailto:jmnaranjo09@gmail.com">jmnaranjo09@gmail.com</a>
@@ -70,15 +64,6 @@
           </span>
           <a href="https://github.com/jnaranj09" rel="me">Github</a>
         </li>
-      </ul>
-
-      <h2 class="side-h">Education <span aria-hidden="true">›</span></h2>
-      <ul class="edu">
-        <li>AWS SAA <span class="gold">— In progress</span></li>
-        <li>VCIX — Internal VMware Learning</li>
-        <li>vSAN Specialist — Internal VMware</li>
-        <li>Cisco CCNA — Universidad Politécnica Internacional</li>
-        <li>High School Bachelor with IT Support Certification</li>
       </ul>
 
       <h2 class="side-h">Skills <span aria-hidden="true">›</span></h2>
@@ -107,7 +92,32 @@
           <li><button class="pill" data-tool="ollama">Ollama / local model</button></li>
           <li><button class="pill" data-tool="node">Node + Express</button></li>
           <li><button class="pill" data-tool="tunnel">Cloudflare Tunnel</button></li>
+          <li><button class="pill" data-tool="argocd">ArgoCD / GitOps</button></li>
         </ul>
+      </div>
+
+      <h2 class="side-h">Links <span aria-hidden="true">›</span></h2>
+      <div class="links links-side">
+        <a class="link" href="/JoseNaranjo-CV.pdf">
+          <span class="link-name">CV</span>
+          <span class="link-desc">PDF, two pages</span>
+          <span class="arr mono" aria-hidden="true">→</span>
+        </a>
+        <a class="link" href="https://github.com/jnaranj09" rel="me">
+          <span class="link-name">GitHub</span>
+          <span class="link-desc">jnaranj09</span>
+          <span class="arr mono" aria-hidden="true">→</span>
+        </a>
+        <a class="link" href="https://github.com/jnaranj09/claude-watcher">
+          <span class="link-name">claude-watcher</span>
+          <span class="link-desc">watches several AI coding sessions at once — 900+ tests</span>
+          <span class="arr mono" aria-hidden="true">→</span>
+        </a>
+        <a class="link" href="https://linkedin.com/in/Jose-Naranjo-3b1a13165" rel="me">
+          <span class="link-name">LinkedIn</span>
+          <span class="link-desc">Jose Naranjo</span>
+          <span class="arr mono" aria-hidden="true">→</span>
+        </a>
       </div>
 
       <p class="side-foot mono">
@@ -143,8 +153,8 @@
 
         <p class="lede">
           This page is the demo. There is no cloud host in front of it — it runs
-          on the machine under my desk, in two containers, and reaches you
-          through a tunnel.
+          on the machine under my desk, in a Kubernetes cluster it deploys itself
+          into, and reaches you through a tunnel.
         </p>
         <p class="dim">
           My CV splits skills into <b>Skilled</b> and <b>Beginner</b>. So does
@@ -271,27 +281,85 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
             </div>
           </div>
 
-          <div class="hop hop-todo" data-tool="kubernetes">
-            <div class="hop-head hop-head-static">
+          <div class="hop" data-tool="kubernetes">
+            <button class="hop-head" aria-expanded="false" aria-controls="d-k8s" id="h-k8s">
               <span class="node" aria-hidden="true"></span>
-              <span class="hop-name">Kubernetes<span class="hop-sub">not wired up yet</span></span>
+              <span class="hop-name">Kubernetes<span class="hop-sub">k3s — the two containers above are pods</span></span>
               <span class="badge badge-green">in production</span>
+            </button>
+            <div class="detail" id="d-k8s" role="region" aria-labelledby="h-k8s">
+              <p>The two containers are no longer containers. They are two
+                Deployments in a <code class="mono">hire-jose</code> namespace on a
+                real cluster, and the tunnel points at a NodePort instead of at
+                docker.</p>
+              <pre class="code mono">chat-api       ClusterIP  :3000
+loadbalancer   NodePort   :8080 → 30080   ← the tunnel lands here</pre>
+              <p class="note">There is no registry. Images are built and imported
+                straight into the node's containerd, and the manifests say
+                <code class="mono">imagePullPolicy: Never</code> to match — the
+                emulated ECR serves plain HTTP and containerd insists on HTTPS.</p>
+              <p class="sub-h">The one that cost me an evening</p>
+              <p>Every pod DNS lookup timed out and nothing logged an error.
+                <code class="mono">br_netfilter</code> was not loaded on the host,
+                so bridged pod traffic never passed through iptables and
+                kube-proxy's ClusterIP rules never fired. The node container
+                cannot load it itself — the module has to be on the host.</p>
+              <p class="note">Ollama stays outside the cluster on purpose. A 4.7 GB
+                model on an 8 GB laptop GPU does not want to be scheduled.</p>
             </div>
           </div>
 
-          <div class="hop hop-todo hop-last" data-tool="aws">
-            <div class="hop-head hop-head-static">
+          <div class="hop" data-tool="argocd">
+            <button class="hop-head" aria-expanded="false" aria-controls="d-argocd" id="h-argocd">
               <span class="node" aria-hidden="true"></span>
-              <span class="hop-name">AWS<span class="hop-sub">not wired up yet</span></span>
-              <span class="badge badge-green">in production</span>
+              <span class="hop-name">ArgoCD<span class="hop-sub">git is the only way in</span></span>
+              <span class="badge badge-gold">first time</span>
+            </button>
+            <div class="detail" id="d-argocd" role="region" aria-labelledby="h-argocd">
+              <p>Nothing here is deployed by hand. An Application watches the
+                <code class="mono">k8s/</code> folder of the public repo with
+                <code class="mono">selfHeal</code> and <code class="mono">prune</code>
+                on, so the cluster follows the branch and anything I change
+                locally gets reverted.</p>
+              <p class="sub-h">The theme you are looking at is the demo</p>
+              <pre class="code mono"><span class="c-cm"># k8s/20-chat-api.yaml</span>
+- name: SITE_THEME
+  value: "default"   <span class="c-cm">← one word. commit it, push it.</span></pre>
+              <p>That is the whole change. No kubectl, no pipeline. ArgoCD notices
+                the commit, rolls the Deployment, and the page goes from dark to
+                light on its own.</p>
+              <p class="note">The UI is published read-only: a dedicated account
+                bound to ArgoCD's built-in <code class="mono">role:readonly</code>.
+                It can read the app; sync and delete both come back
+                <code class="mono">403 permission denied</code>.</p>
+            </div>
+          </div>
+
+          <div class="hop hop-last" data-tool="aws">
+            <button class="hop-head" aria-expanded="false" aria-controls="d-aws" id="h-aws">
+              <span class="node" aria-hidden="true"></span>
+              <span class="hop-name">floci<span class="hop-sub">an AWS API on localhost — not real AWS</span></span>
+              <span class="badge badge-gold">first time</span>
+            </button>
+            <div class="detail" id="d-aws" role="region" aria-labelledby="h-aws">
+              <p>The cluster above was created with the AWS CLI, against an
+                emulator running on this machine. There is no AWS account
+                anywhere in this and the credentials are the string
+                <code class="mono">test</code>.</p>
+              <pre class="code mono">aws eks create-cluster --name hire-jose   <span class="c-cm"># → starts a real k3s container</span>
+aws eks update-kubeconfig --name hire-jose</pre>
+              <p class="note">Worth being exact about what this is and is not: it
+                emulates the AWS API, so the EKS call is real and the Kubernetes
+                behind it is real, but none of it proves anything about running
+                EKS. The AWS I run at work is the other kind — S3, Transit
+                Gateway, Site-to-Site VPN, and Terraform-provisioned PrivateLink.</p>
             </div>
           </div>
 
         </div>
 
-        <p class="note rail-foot">The last two are dashed because they are not
-          built yet. They are the tools I use at work every day, and this demo
-          has not caught up to them.<span class="tail"></span></p>
+        <p class="note rail-foot">Every hop is live as you read this. The
+          machine under my desk is running all of it.<span class="tail"></span></p>
       </article>
     </section>
 
@@ -305,81 +373,6 @@ POST /api/chat/&lt;session&gt;             verify HMAC + expiry</pre>
           involved. It says so when something is not in the notes.</p>
         <ul class="prompts" id="suggested-prompts"></ul>
       </article>
-    </section>
-
-    <!-- Work experience -->
-    <section class="block reveal">
-      <span class="chip chip-green">Work Experience</span>
-
-      <article class="card">
-        <span class="mark" aria-hidden="true">›</span>
-        <h3 class="job"><span class="gold">DevOps Engineer</span> at <span class="cyan">Click</span>lease</h3>
-        <p class="when">June 2022 – Present</p>
-        <p class="ach">Achievements:</p>
-        <ul class="work">
-          <li data-tools="kubernetes docker aws">Migrated EC2 workloads to Kubernetes &amp; Docker, enhancing service management.</li>
-          <li data-tools="kubernetes cicd">Automated software testing with Kubernetes jobs running Cucumber tests.</li>
-          <li data-tools="">Contributed to Angular projects.</li>
-          <li data-tools="cicd bash">Accelerated development with CI/CD pipelines in Bash &amp; PowerShell.</li>
-          <li data-tools="">Improved employee onboarding by integrating a HR Copilot Chatbot in Teams.</li>
-          <li data-tools="">Resolved API, Spring Boot dependency, and app configuration issues.</li>
-          <li data-tools="grafana prometheus">Implemented infrastructure monitoring through Grafana, Prometheus and OpenTelemetry.</li>
-          <li data-tools="aws">Integrated AWS solutions like S3, Transit Gateway, and Site-to-Site VPNs.<span class="tail"></span></li>
-        </ul>
-      </article>
-
-      <article class="card">
-        <span class="mark" aria-hidden="true">›</span>
-        <h3 class="job"><span class="gold">Technical Support Engineer</span> at <b>vm</b>ware</h3>
-        <p class="when">September 2020 – June 2022</p>
-        <p class="ach">Achievements:</p>
-        <ul class="work">
-          <li data-tools="">Resolved customers' business critical outages related to VMware SRM and vSAN technologies.</li>
-          <li data-tools="">Improved customers' implementations by best practices consultations.</li>
-          <li data-tools="">Trained new team members.</li>
-          <li data-tools="">Debugged other products to collaborate in favor of customers' needs (Cloud Foundation, vCenter Server, among others).<span class="tail"></span></li>
-        </ul>
-      </article>
-
-      <article class="card">
-        <span class="mark" aria-hidden="true">›</span>
-        <h3 class="job"><span class="gold">IT Administrator</span> at NETWAY S.A</h3>
-        <p class="when">November 2017 – September 2020</p>
-        <p class="ach">Achievements:</p>
-        <ul class="work">
-          <li data-tools="">Implemented wired/wireless physical networks and virtualization technology.</li>
-          <li data-tools="">Deployed endpoint security solutions.</li>
-          <li data-tools="">Led meetings with customers to discuss solution implementations.</li>
-          <li data-tools="">Trained customers on VOIP software usage.<span class="tail"></span></li>
-        </ul>
-      </article>
-    </section>
-
-    <!-- Links -->
-    <section class="block reveal">
-      <span class="chip chip-flat">Links</span>
-      <div class="links">
-        <a class="link" href="/JoseNaranjo-CV.pdf">
-          <span class="link-name">CV</span>
-          <span class="link-desc">PDF, two pages</span>
-          <span class="arr mono" aria-hidden="true">→</span>
-        </a>
-        <a class="link" href="https://github.com/jnaranj09" rel="me">
-          <span class="link-name">GitHub</span>
-          <span class="link-desc">jnaranj09</span>
-          <span class="arr mono" aria-hidden="true">→</span>
-        </a>
-        <a class="link" href="https://github.com/jnaranj09/claude-watcher">
-          <span class="link-name">claude-watcher</span>
-          <span class="link-desc">watches several AI coding sessions at once — 900+ tests</span>
-          <span class="arr mono" aria-hidden="true">→</span>
-        </a>
-        <a class="link" href="https://linkedin.com/in/Jose-Naranjo-3b1a13165" rel="me">
-          <span class="link-name">LinkedIn</span>
-          <span class="link-desc">Jose Naranjo</span>
-          <span class="arr mono" aria-hidden="true">→</span>
-        </a>
-      </div>
     </section>
 
   </main>

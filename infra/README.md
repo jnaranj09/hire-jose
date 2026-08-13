@@ -47,9 +47,11 @@ kubectl create secret generic chat-api-secrets -n hire-jose \
   --from-literal=CHAT_BOT_TOKEN="$(openssl rand -hex 16)" \
   --from-literal=CHAT_BOT_SECRET="$(openssl rand -hex 32)"
 
-# 6. ArgoCD
+# 6. ArgoCD. --server-side is required: the ApplicationSet CRD is larger than
+#    the 262144-byte annotation a client-side apply writes, so a plain
+#    `kubectl apply` installs everything else and then fails on that one CRD.
 kubectl create namespace argocd
-kubectl apply -n argocd -f \
+kubectl apply -n argocd --server-side -f \
   https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 kubectl -n argocd rollout status deploy/argocd-server
 
@@ -96,5 +98,27 @@ change when the cluster is recreated.
   reboot, the modules for the *running* kernel are gone and k3s dies at
   startup — kube-proxy fails on `iptables-restore` and flannel reports
   "operation not supported".
+- **`br_netfilter` loaded on the host.** floci does not mount `/lib/modules`
+  into the node container, so k3s cannot load it itself — it has to already be
+  loaded on the host. Without it, bridged pod traffic never passes through
+  iptables, so kube-proxy's ClusterIP rules never fire: every pod DNS lookup to
+  `10.43.0.10` times out and ArgoCD sits at `Unknown` with
+  `lookup argocd-redis: i/o timeout`. Nothing logs an error — it just hangs.
+
+  ```bash
+  sudo modprobe br_netfilter
+  sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+  ```
+
+  Persisted here in `/etc/modules-load.d/k3s.conf` and `/etc/sysctl.d/99-k3s.conf`.
 - **Ollama reachable from the cluster.** It binds `127.0.0.1` by default,
   which pods cannot reach. It needs to listen on the docker bridge as well.
+- **A firewall opening that binds.** With `br_netfilter` on, pod → host traffic
+  is subject to the host firewall, and ufw's default `INPUT DROP` silently eats
+  it. The chat-api `/api/health` probe calls Ollama, so the pod restarts every
+  30s with no useful log line.
+
+  ```bash
+  sudo ufw allow from 172.17.0.0/16 to any port 11434 proto tcp
+  sudo ufw allow from 10.42.0.0/16  to any port 11434 proto tcp
+  ```

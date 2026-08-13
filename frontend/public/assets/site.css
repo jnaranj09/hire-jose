@@ -37,6 +37,20 @@
   --slate-mut: #4d5b69;
   --rail: #2f4a44;
 
+  /* Anything that must flip with the theme belongs here, not inline. These
+     exist because the page used to hard-code light-grey hexes, which stayed
+     light-grey under the paper theme and turned unreadable on a light page. */
+  --text-soft: #c6ccd2;   /* body text one step below --text */
+  --text-dim: #85857f;    /* captions, meta, descriptions */
+  --surface-2: #171715;   /* code blocks, icon circles, flat chips */
+  --border-2: #2f2f2c;    /* hairlines on those surfaces */
+  --dot: #6b6b69;         /* small decorative marks */
+  --hover-tint: rgba(255, 255, 255, .035);
+  --ok: #4fbf87;          /* 'none seen', 'in production' */
+  --bad: #d9713f;
+  --ok-edge: #235c42;
+  --gold-edge: #55492a;
+
   --sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -57,7 +71,7 @@ body {
 .dim { color: var(--muted); }
 
 a { color: var(--text); text-decoration-color: rgba(255, 255, 255, .28); }
-a:hover { color: #fff; text-decoration-color: var(--green); }
+a:hover { color: var(--paper); text-decoration-color: var(--green); }
 
 :focus-visible {
   outline: 2px solid var(--cyan);
@@ -162,7 +176,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: #b9bfc6;
+  color: var(--text-soft);
   margin: 0 0 10px;
 }
 .role b { color: var(--gold); font-weight: 800; }
@@ -193,10 +207,10 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #16202a;
+  background: var(--surface-2);
   display: grid;
   place-items: center;
-  color: #cfd6dd;
+  color: var(--text-soft);
 }
 .ico svg { width: 15px; height: 15px; fill: currentColor; }
 .ico-green { background: var(--green); color: #fff; }
@@ -225,7 +239,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   position: relative;
   padding-left: 15px;
   margin-bottom: 9px;
-  color: #c3c9cf;
+  color: var(--text-soft);
 }
 .edu li::before {
   content: "";
@@ -240,13 +254,13 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 
 .side-note {
   font-size: 12.5px;
-  color: #8794a1;
+  color: var(--text-dim);
   margin: 12px 0 14px;
 }
 
 .skillbox {
   position: relative;
-  border: 1px solid #2c3d4b;
+  border: 1px solid var(--border-2);
   border-radius: 11px;
   padding: 20px 13px 11px;
   margin-bottom: 18px;
@@ -263,7 +277,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   background: var(--slate);
   border-radius: 5px;
 }
-.tag-green { color: #4fbf87; }
+.tag-green { color: var(--ok); }
 .tag-gold { color: var(--gold); }
 
 .pills {
@@ -277,7 +291,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 
 .pill {
   font: 600 13px/1 var(--sans);
-  color: #c6ccd2;
+  color: var(--text-soft);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -285,16 +299,16 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   cursor: pointer;
   transition: color .14s ease, background .14s ease, border-color .14s ease;
 }
-.pill:hover { color: #fff; border-color: var(--slate-mut); }
+.pill:hover { color: var(--paper); border-color: var(--slate-mut); }
 .pill.on { background: var(--green); border-color: var(--green); color: #fff; }
 .pills[data-group="new"] .pill.on { background: var(--gold); border-color: var(--gold); color: #1e1e1c; }
 
 .side-foot {
   font-size: 12px;
-  color: #7e8b98;
+  color: var(--text-dim);
   margin: 34px 0 0;
   padding-top: 18px;
-  border-top: 1px solid #2c3d4b;
+  border-top: 1px solid var(--border-2);
   margin-top: auto;
 }
 .live-dot {
@@ -328,7 +342,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 .chip-orange { background: var(--orange); }
 .chip-green { background: var(--green); }
 .chip-cyan { background: var(--cyan); color: #10262b; }
-.chip-flat { background: #33383c; color: var(--paper); }
+.chip-flat { background: var(--surface-2); color: var(--paper); }
 
 .card {
   position: relative;
@@ -360,7 +374,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   display: inline-block;
   width: 14px;
   height: 2px;
-  background: #55554f;
+  background: var(--dot);
   margin-left: 6px;
   vertical-align: 2px;
 }
@@ -373,9 +387,9 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   margin: 0 0 1px;
   color: var(--paper);
 }
-.job b { font-weight: 800; color: #fff; }
+.job b { font-weight: 800; color: var(--paper); }
 
-.when { font-size: 13px; color: #7d7d7c; margin: 0 0 12px; }
+.when { font-size: 13px; color: var(--text-dim); margin: 0 0 12px; }
 .ach { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
 
 .work { list-style: none; padding: 0; margin: 0; }
@@ -383,7 +397,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   position: relative;
   padding-left: 17px;
   margin-bottom: 8px;
-  color: #c9c9c7;
+  color: var(--text-soft);
   transition: opacity .18s ease, color .18s ease;
 }
 .work li::before {
@@ -394,10 +408,10 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #6b6b69;
+  background: var(--dot);
 }
 .work.filtered li { opacity: .3; }
-.work.filtered li.hit { opacity: 1; color: #fff; }
+.work.filtered li.hit { opacity: 1; color: var(--paper); }
 .work.filtered li.hit::before { background: var(--green); }
 
 /* ---- the rail: request path -------------------------------------- */
@@ -445,7 +459,30 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   cursor: pointer;
   transition: background .14s ease;
 }
-.hop-head:hover { background: rgba(255, 255, 255, .035); }
+/* A white wash is invisible on a light background, so the tint is a variable
+   the themes set for themselves. */
+.hop-head:hover { background: var(--hover-tint); }
+
+/* These expand, and nothing said so. The caret points down when closed and up
+   when open, and it is the same "›" the sidebar headings use. */
+.hop-head::after {
+  content: "›";
+  flex: none;
+  margin-left: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-dim);
+  transform: rotate(90deg);
+  transition: transform .18s ease, color .18s ease;
+}
+.hop-head:hover::after,
+.hop-head:focus-visible::after { color: var(--green); }
+.hop-head[aria-expanded="true"]::after {
+  transform: rotate(-90deg);
+  color: var(--green);
+}
+.hop-head-static::after { content: none; }
 
 .hop-head-static { cursor: default; }
 .hop-head-static:hover { background: none; }
@@ -482,9 +519,9 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 .hop-sub {
   font-weight: 400;
   font-size: 12.5px;
-  color: #85857f;
+  color: var(--text-dim);
 }
-.hop-todo .hop-name { color: #8c8c88; }
+.hop-todo .hop-name { color: var(--text-dim); }
 
 .badge {
   margin-left: auto;
@@ -497,16 +534,16 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   border-radius: 999px;
   border: 1px solid;
 }
-.badge-green { color: #4fbf87; border-color: #235c42; background: rgba(16, 159, 90, .08); }
-.badge-gold { color: var(--gold); border-color: #55492a; background: rgba(200, 183, 121, .07); }
-.badge-flat { color: #8a8a86; border-color: #3a3a37; }
+.badge-green { color: var(--ok); border-color: var(--ok-edge); background: rgba(16, 159, 90, .08); }
+.badge-gold { color: var(--gold); border-color: var(--gold-edge); background: rgba(200, 183, 121, .07); }
+.badge-flat { color: #8a8a86; border-color: var(--border-2); }
 
 .js .detail { display: none; }
 
 .detail {
   padding: 4px 6px 20px 38px;
   font-size: 14.5px;
-  color: #bcbcba;
+  color: var(--text-soft);
 }
 .detail p { margin: 0 0 12px; }
 .detail p:last-child { margin-bottom: 0; }
@@ -516,26 +553,26 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #7f7f7b;
+  color: var(--text-dim);
   margin: 18px 0 8px;
 }
 
-.note { color: #93938f; font-size: 13.5px; }
+.note { color: var(--text-dim); font-size: 13.5px; }
 
 .code {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.65;
-  background: #171715;
-  border: 1px solid #302f2c;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
   border-left: 2px solid var(--green);
   border-radius: 8px;
   padding: 12px 14px;
   margin: 0 0 13px;
   overflow-x: auto;
-  color: #cfcfc9;
+  color: var(--text-soft);
 }
-.c-cm { color: #6f6f6a; }
+.c-cm { color: var(--text-dim); }
 
 .tbl {
   width: 100%;
@@ -545,21 +582,21 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 }
 .tbl td, .tbl th {
   padding: 6px 10px 6px 0;
-  border-bottom: 1px solid #2c2c29;
+  border-bottom: 1px solid var(--border-2);
   text-align: left;
 }
 .tbl th {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #7f7f7b;
+  color: var(--text-dim);
   font-weight: 700;
 }
 .tbl .mono { font-size: 12.5px; }
-.tbl .pick td { color: #fff; }
+.tbl .pick td { color: var(--paper); }
 .tbl .pick .mono { color: var(--gold); }
-.ok { color: #4fbf87; }
-.bad { color: #d9713f; }
+.ok { color: var(--ok); }
+.bad { color: var(--bad); }
 
 .facts { list-style: none; padding: 0; margin: 0; font-size: 13.5px; }
 .facts li {
@@ -577,7 +614,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
   border-radius: 50%;
   background: var(--green);
 }
-.facts b { color: #fff; font-variant-numeric: tabular-nums; }
+.facts b { color: var(--paper); font-variant-numeric: tabular-nums; }
 
 .card .rail-foot { margin: 16px 0 0; }
 
@@ -588,13 +625,28 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 
 .links { display: grid; gap: 9px; padding-top: 12px; }
 
+/* Same cards in the sidebar, which is much narrower: stack the name over the
+   description instead of sitting them on one line, and drop the hover nudge
+   so they do not slide under the rail. */
+.links-side { gap: 7px; margin-bottom: 4px; }
+.links-side .link {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px 12px;
+  position: relative;
+}
+.links-side .link-desc { font-size: 12px; line-height: 1.35; padding-right: 16px; }
+.links-side .arr { position: absolute; right: 12px; top: 10px; margin-left: 0; }
+.links-side .link:hover { transform: none; }
+
 .link {
   display: flex;
   align-items: baseline;
   gap: 12px;
   padding: 13px 16px;
   background: var(--card);
-  border: 1px solid #2f2f2c;
+  border: 1px solid var(--border-2);
   border-radius: 11px;
   text-decoration: none;
   color: var(--text);
@@ -602,7 +654,7 @@ a:hover { color: #fff; text-decoration-color: var(--green); }
 }
 .link:hover { border-color: var(--green); transform: translateX(3px); color: var(--text); }
 .link-name { font-weight: 700; color: var(--paper); }
-.link-desc { color: #85857f; font-size: 13.5px; }
+.link-desc { color: var(--text-dim); font-size: 13.5px; }
 .arr { margin-left: auto; color: var(--green); }
 
 /* ---- reveal ------------------------------------------------------ */
