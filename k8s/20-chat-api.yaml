@@ -30,7 +30,7 @@ spec:
             # the assistant, when a visitor asks it to, through the GitHub
             # contents API — same line, same commit, same rollout.
             - name: SITE_THEME
-              value: "paper"
+              value: "default"
             # ------------------------------------------------------------
           envFrom:
             - configMapRef:
