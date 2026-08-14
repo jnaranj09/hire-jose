@@ -47,9 +47,10 @@ scripts/load-images.sh
 #    a fine-grained token, contents:write, this repo only. Leave it out and
 #    the switch is simply off. ARGOCD_PASSWORD is the read-only viewer
 #    account the answer hands to the visitor.
+#    CHAT_BOT_TOKEN is not here: access links are created on the token page
+#    instead, and stored on the PVC in k8s/15-chat-api-data.yaml.
 kubectl create namespace hire-jose
 kubectl create secret generic chat-api-secrets -n hire-jose \
-  --from-literal=CHAT_BOT_TOKEN="$(openssl rand -hex 16)" \
   --from-literal=CHAT_BOT_SECRET="$(openssl rand -hex 32)" \
   --from-literal=GITHUB_TOKEN="github_pat_..." \
   --from-literal=ARGOCD_PASSWORD="<the viewer password>"
@@ -93,6 +94,20 @@ The account it hands out is the `viewer` one already in the cluster:
 `accounts.viewer: login` in `argocd-cm`, `g, viewer, role:readonly` in
 `argocd-rbac-cm`. Its password goes in `chat-api-secrets` as
 `ARGOCD_PASSWORD`, never in a manifest.
+
+## The token page
+
+Access links are created there, not in an env var. It is on its own port inside
+the pod, deliberately absent from the Service and from the tunnel:
+
+```bash
+kubectl -n hire-jose port-forward deploy/chat-api 3001:3001
+# then http://127.0.0.1:3001
+```
+
+The links live on `chat-api-data`, a PersistentVolumeClaim served by k3s's
+local-path provisioner — a directory on the node. Without it, every rollout
+(including the theme demo's) would throw the links away.
 
 ## Reaching the pods from the host
 

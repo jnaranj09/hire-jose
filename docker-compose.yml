@@ -21,9 +21,18 @@ services:
     environment:
       HOST: 127.0.0.1
       PORT: ${CHAT_API_PORT:-3000}
-      CHAT_BOT_TOKEN: ${CHAT_BOT_TOKEN:?set CHAT_BOT_TOKEN in .env}
+      # Optional now: links are created on the admin page instead. This one
+      # stays only so a link sent before that keeps working.
+      CHAT_BOT_TOKEN: ${CHAT_BOT_TOKEN:-}
       CHAT_BOT_SECRET: ${CHAT_BOT_SECRET:?set CHAT_BOT_SECRET in .env}
       CHAT_SESSION_TTL: ${CHAT_SESSION_TTL:-43200}
+      # The token admin page. network_mode is host, so it binds straight on
+      # 127.0.0.1 and HAProxy never sees it.
+      ADMIN_ENABLED: ${ADMIN_ENABLED:-true}
+      ADMIN_HOST: 127.0.0.1
+      ADMIN_PORT: ${ADMIN_PORT:-3001}
+      TOKEN_STORE_PATH: /content/data/tokens.json
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://127.0.0.1:${LB_PORT:-8080}}
       OLLAMA_URL: ${OLLAMA_URL:-http://127.0.0.1:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-hire-jose}
       SITE_THEME: ${SITE_THEME:-default}
@@ -45,4 +54,7 @@ services:
       - ./prompts:/content/prompts:ro
       - ./knowledge:/content/knowledge:ro
       - ./frontend/public:/content/public:ro
+      - ./frontend/admin:/content/admin:ro
+      # Read-write, and git-ignored. This is the only state the app has.
+      - ./data:/content/data
     restart: unless-stopped

@@ -15,6 +15,15 @@ spec:
       labels:
         app: chat-api
     spec:
+      # The image runs as uid 1000 and the token store is written at runtime.
+      # Without this the local-path volume arrives root-owned and read-only to
+      # the process, and the admin page cannot save anything.
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: chat-api-data
       containers:
         - name: chat-api
           # GitHub Actions builds this on every push and rewrites the tag on
@@ -38,9 +47,18 @@ spec:
             # Created by hand, never in git — see k8s/README.md.
             - secretRef:
                 name: chat-api-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /content/data
           ports:
             - name: http
               containerPort: 3000
+            # The token admin page. Listed for documentation only — it is
+            # deliberately NOT in the Service below and not in the tunnel, so
+            # nothing outside the pod can route to it. Reach it with:
+            #   kubectl -n hire-jose port-forward deploy/chat-api 3001:3001
+            - name: admin
+              containerPort: 3001
           readinessProbe:
             httpGet:
               path: /api/health

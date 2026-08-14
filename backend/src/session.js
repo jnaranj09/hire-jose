@@ -16,8 +16,10 @@ export function matches(candidate, expected) {
 
 export function createSessions({ secret, ttlSeconds }) {
   return {
-    issue() {
-      const payload = `${Date.now() + ttlSeconds * 1000}.${randomBytes(9).toString('base64url')}`;
+    // A session must never outlive the token that opened it, so the caller can
+    // ask for a shorter one when the token expires first.
+    issue(seconds = ttlSeconds) {
+      const payload = `${Date.now() + Math.max(1, seconds) * 1000}.${randomBytes(9).toString('base64url')}`;
       return `${payload}.${sign(payload, secret)}`;
     },
 

@@ -7,6 +7,7 @@ import { loadKnowledge } from './knowledge.js';
 import { OllamaClient } from './ollama.js';
 import { createSessions, fingerprint } from './session.js';
 import { createThemeSwitcher } from './theme.js';
+import { createTokenStore } from './tokens.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { requireSession } from './middleware/requireSession.js';
 import { validateQuestion } from './middleware/validateQuestion.js';
@@ -132,6 +133,12 @@ export async function createApp(config) {
     ttlSeconds: config.access.sessionTtlSeconds
   });
 
+  const tokens = createTokenStore({
+    filePath: config.access.storePath,
+    secret: config.access.secret
+  });
+  tokens.load();
+
   const theme = createThemeSwitcher({
     ...config.themeDemo,
     publicPath: config.paths.public,
@@ -157,7 +164,8 @@ export async function createApp(config) {
     '/api',
     sessionRoute({
       sessions,
-      accessToken: config.access.token,
+      tokens,
+      legacyToken: config.access.token,
       secret: config.access.secret,
       ttlSeconds: config.access.sessionTtlSeconds,
       analytics,
@@ -196,6 +204,11 @@ export async function createApp(config) {
   return {
     app,
     knowledge,
-    tokenFingerprint: fingerprint(config.access.token, config.access.secret)
+    tokens,
+    // Only the original env token gets a fingerprint printed at startup. The
+    // managed ones carry theirs on the admin page, next to their label.
+    tokenFingerprint: config.access.token
+      ? fingerprint(config.access.token, config.access.secret)
+      : null
   };
 }

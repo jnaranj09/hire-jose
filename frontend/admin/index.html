@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access tokens · hire-jose</title>
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap bar-inner">
+    <div>
+      <h1>Access tokens</h1>
+      <p class="sub">Every link that can open the chat. Changes apply immediately — nothing restarts.</p>
+    </div>
+    <span class="local" title="This page listens on its own port. It is not on the public site.">local only</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="panel">
+    <h2>New link</h2>
+    <form id="create" autocomplete="off">
+      <div class="fields">
+        <label class="field">
+          <span>Who is it for</span>
+          <input id="label" name="label" type="text" maxlength="80" placeholder="Buffer — hiring manager" required>
+        </label>
+        <label class="field narrow">
+          <span>Expires</span>
+          <select id="expiry" name="expiry">
+            <option value="7">in 7 days</option>
+            <option value="30" selected>in 30 days</option>
+            <option value="90">in 90 days</option>
+            <option value="">never</option>
+            <option value="custom">a number of days…</option>
+          </select>
+        </label>
+        <label class="field narrow hidden" id="customWrap">
+          <span>Days</span>
+          <input id="customDays" type="number" min="1" max="3650" value="14">
+        </label>
+        <button class="primary" type="submit">Create link</button>
+      </div>
+      <p class="err hidden" id="createError" role="alert"></p>
+    </form>
+  </section>
+
+  <section class="panel reveal hidden" id="created" aria-live="polite">
+    <h2>Copy this now</h2>
+    <p class="sub">The link is shown once. It is not stored anywhere — only a hash of it is.</p>
+    <div class="secret">
+      <code id="secretText" class="masked">••••••••••••••••••••••••••••••••••••</code>
+      <button type="button" class="ghost" id="toggleSecret" aria-pressed="false">Reveal</button>
+      <button type="button" class="ghost" id="copySecret">Copy</button>
+    </div>
+    <p class="meta"><span id="createdLabel"></span> · fingerprint <code id="createdPrint"></code></p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Links</h2>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="table-scroll">
+      <table id="table">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Fingerprint</th>
+            <th>Created</th>
+            <th>Expires</th>
+            <th>Last used</th>
+            <th class="num">Uses</th>
+            <th>Status</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <p class="empty hidden" id="empty">No links yet. Create one above.</p>
+    <p class="err hidden" id="listError" role="alert"></p>
+  </section>
+
+  <p class="foot">
+    Fingerprint is the first 12 hex of <code>HMAC-SHA256(token, CHAT_BOT_SECRET)</code> — the same value
+    the chat logs on every attempt, so <code>grep</code> tells you which link was used.
+  </p>
+
+</main>
+
+<script src="/admin.js"></script>
+</body>
+</html>

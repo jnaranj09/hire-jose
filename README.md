@@ -19,10 +19,12 @@ thing allowed to talk to it.
 ```
 loadbalancer/ HAProxy, the public edge
 frontend/     the static site plus the chat widget
+              admin/ — the token page, served on its own local port
 backend/      the Chat API (Node, Express), which also serves the site
 prompts/      persona.md and reminder.md
 knowledge/    everything the assistant may say about Jose
 ollama/       Modelfile for the chat model
+data/         the access tokens, written at runtime. Not in git
 ```
 
 The site is plain HTML and CSS. There is no build step and no framework.
@@ -34,16 +36,17 @@ ollama pull qwen2.5:7b-instruct
 ollama create hire-jose -f ollama/Modelfile
 
 cp .env.example .env
-sed -i "s|^CHAT_BOT_TOKEN=.*|CHAT_BOT_TOKEN=$(openssl rand -hex 16)|" .env
 sed -i "s|^CHAT_BOT_SECRET=.*|CHAT_BOT_SECRET=$(openssl rand -hex 32)|" .env
+mkdir -p data
 
 docker compose up -d --build
 ```
 
-The chat is behind an access token, so open the site with it:
+The chat is behind an access link. Create one on the token page at
+**http://127.0.0.1:3001**, then open the link it gives you:
 
 ```
-http://127.0.0.1:8080/?chat_bot_token=<CHAT_BOT_TOKEN from .env>
+http://127.0.0.1:8080/?chat_bot_token=<the token>
 ```
 
 Without the token the portfolio page loads normally and the chat does not exist.
@@ -53,6 +56,12 @@ Both containers use the host network so they can reach Ollama on
 `127.0.0.1` only, so the only way in is through the Cloudflare Tunnel.
 
 Requirements: Docker, and Ollama running on the host.
+
+The tests need neither:
+
+```bash
+cd backend && npm test
+```
 
 ### Without Docker
 
@@ -280,8 +289,8 @@ Guard rails, in order:
   the branch while ArgoCD is still rolling the last one.
 - **Only a theme with a stylesheet** in `frontend/public/themes/` is accepted —
   the same check the script does.
-- **The whole chat is behind `CHAT_BOT_TOKEN`**, so this is reachable only by
-  someone holding a link you sent.
+- **The whole chat is behind an access token**, so this is reachable only by
+  someone holding a link you sent, and only until you revoke it.
 
 In Kubernetes, `GITHUB_TOKEN` and `ARGOCD_PASSWORD` go in the `chat-api-secrets`
 secret, which is created by hand and never committed. The rest is in
@@ -291,9 +300,14 @@ secret, which is created by hand and never committed. The rest is in
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `CHAT_BOT_TOKEN` | none | Link credential, required in the URL. Revoke by changing it |
+| `CHAT_BOT_TOKEN` | empty | The old single link credential. Optional, kept only for links sent before the token page existed |
 | `CHAT_BOT_SECRET` | none | Server-only HMAC key for session tokens |
-| `CHAT_SESSION_TTL` | `43200` | Session lifetime in seconds |
+| `CHAT_SESSION_TTL` | `43200` | Session lifetime in seconds, capped by the token's own expiry |
+| `TOKEN_STORE_PATH` | `data/tokens.json` | Where the access tokens are stored. Hashes only |
+| `ADMIN_ENABLED` | `true` | Set `false` to not listen on the admin port at all |
+| `ADMIN_HOST` | `127.0.0.1` | Interface the token page binds. Loopback is the point |
+| `ADMIN_PORT` | `3001` | Port for the token page. Never behind HAProxy, never in the Service |
+| `PUBLIC_SITE_URL` | empty | Only used to build the link shown after a token is created |
 | `LB_PORT` | `8080` | Host port HAProxy binds on `127.0.0.1` |
 | `LB_STATS_PORT` | `5000` | Host port for the stats page and `/metrics`, `127.0.0.1` only |
 | `LB_SITE_RATE` | `300` | Page requests allowed per IP per minute |
@@ -319,19 +333,98 @@ secret, which is created by hand and never committed. The rest is in
 | `ARGOCD_USERNAME` | `viewer` | Read-only account shown with the link |
 | `ARGOCD_PASSWORD` | empty | Password shown with the link. Read-only account, still not in git |
 
+## Managing the links
+
+There used to be one token, in an env var. Revoking it meant editing `.env` and
+restarting `chat-api`, which killed every link ever sent at the same time. Now
+each recruiter gets their own link, with its own expiry, revocable on its own,
+and none of it restarts anything.
+
+The page is at `http://127.0.0.1:3001`:
+
+```bash
+docker compose up -d                                            # compose
+kubectl -n hire-jose port-forward deploy/chat-api 3001:3001      # kubernetes
+```
+
+It **listens on its own port**, which is not in the Kubernetes Service and not
+behind HAProxy. There is no public path that reaches it — not a deny rule that
+could be mis-edited, just nothing to route to.
+
+Two more guards, because "loopback only" is not the same as "no browser can
+reach it":
+
+- **Host allow-list.** Only `localhost`, `127.0.0.1` and `[::1]` are answered.
+  This stops DNS rebinding, where a page you visit points its own domain at
+  127.0.0.1 and then talks to this port as same-origin.
+- **A custom header on every write.** A cross-site form or `fetch` cannot set
+  one without a preflight, and nothing here answers a preflight.
+
+### What is stored
+
+`data/tokens.json`, one row per link. **The token itself is never in it** — only
+a SHA-256 of it, which is what a login attempt is checked against:
+
+```json
+{
+  "id": "40687f42bb06",
+  "label": "Buffer — hiring manager",
+  "hash": "5f561d989752a60d79d3addd51412871e2925b44fc4eac3ee1233eb1297295f1",
+  "fingerprint": "03d90ff51bbe",
+  "createdAt": 1786669675606,
+  "expiresAt": 1789261675606,
+  "revokedAt": null,
+  "lastUsedAt": 1786669675642,
+  "uses": 1
+}
+```
+
+SHA-256 and not an HMAC on purpose. If the hash depended on `CHAT_BOT_SECRET`,
+rotating that secret to cut active sessions would silently kill every link too,
+and those two actions are supposed to be separate.
+
+`fingerprint` is the *other* hash — `HMAC-SHA256(token, CHAT_BOT_SECRET)`, first
+12 hex — and it is the same value the chat logs on every attempt. It is on the
+page next to the label, so one `grep` says which link is being used:
+
+```bash
+docker compose logs chat-api | grep 03d90ff51bbe
+```
+
+The file is the source of truth and is re-read whenever it changes on disk, so
+editing it by hand works too, still with nothing to restart.
+
+### Deliberate details
+
+- The raw token is returned **once**, when it is created. The page shows it
+  masked until you click Reveal, and nothing can show it again afterwards.
+- A **revoked** token is still a real token, so a rejected attempt with one logs
+  the label and no preview. Only an outright wrong guess gets its first 12
+  characters written down.
+- A session is capped at the token's remaining life, so a link cannot outlive
+  its expiry by up to 12 hours through a session issued just before.
+- `CHAT_BOT_TOKEN` still works if it is set. It is only there so a link sent
+  before this page existed keeps working; it cannot be revoked without a
+  restart. Leave it empty.
+
+In Kubernetes the file lives on a small PersistentVolumeClaim
+(`k8s/15-chat-api-data.yaml`), because otherwise every rollout — including the
+theme demo's — would throw the tokens away. The pod sets `fsGroup: 1000` so the
+volume is writable by the user the image runs as.
+
 ## Access control
 
 Two separate things, often confused:
 
-**`CHAT_BOT_TOKEN`** is the link credential. It goes in the URL you send to a
+**The access token** is the link credential. It goes in the URL you send to a
 recruiter. The widget only renders if it is present and the backend accepts it.
-**This is the revocable part** — change it in `.env`, restart `chat-api`, and
-every link you ever sent is dead.
+Each one is created on the token page, has its own expiry, and can be revoked on
+its own — see "Managing the links" below.
 
 **`CHAT_BOT_SECRET`** is the signing key. It never leaves the server and is
 never sent to a browser. It only signs and verifies session tokens. Rotating it
 does not invalidate links; it invalidates every *active session* at once. Use it
-when you want to cut people off immediately without changing the link.
+when you want to cut people off immediately without changing the links.
 
 The flow:
 
@@ -347,10 +440,14 @@ HAProxy replaces that path segment with a dash before logging, so the session
 never reaches a log file — see "Logging without leaking" above.
 
 Sessions last `CHAT_SESSION_TTL` seconds (12 hours by default) and are not
-refreshed, so a session outliving a page visit is normal. The link is the real
-credential; the session just keeps the signing key off the client.
+refreshed, so a session outliving a page visit is normal. A session is never
+issued for longer than the token has left, so revoking a link at 10:00 cannot be
+outlived by a session handed out at 09:59. The link is the real credential; the
+session just keeps the signing key off the client.
 
-`chat-api` refuses to start if either value is missing or under 16 characters.
+`chat-api` refuses to start without `CHAT_BOT_SECRET`, or with one under 16
+characters. `CHAT_BOT_TOKEN` is optional now, but if it is set it has to clear
+the same length rule.
 
 | Request | Result |
 | --- | --- |
@@ -369,27 +466,28 @@ docker compose logs chat-api | grep session_attempt
 ```
 
 ```json
-{"event":"session_attempt","accepted":false,"fingerprint":"2e5ade100c8c",
- "token_length":5,"token_preview":"admin","ip":"203.0.113.9","user_agent":"curl/8.21.0"}
-{"event":"session_attempt","accepted":true,"fingerprint":"c64decc61ba4",
- "token_length":91,"token_preview":null,"ip":"198.51.100.4","user_agent":"Mozilla/5.0 ..."}
+{"event":"session_attempt","accepted":false,"reason":"unknown","fingerprint":"2e5ade100c8c",
+ "token_label":null,"token_length":5,"token_preview":"admin","ip":"203.0.113.9","user_agent":"curl/8.21.0"}
+{"event":"session_attempt","accepted":false,"reason":"revoked","fingerprint":"03d90ff51bbe",
+ "token_label":"Old test link","token_length":35,"token_preview":null,"ip":"203.0.113.9","user_agent":"Mozilla/5.0 ..."}
+{"event":"session_attempt","accepted":true,"reason":null,"fingerprint":"c64decc61ba4",
+ "token_label":"Buffer — hiring manager","token_length":35,"token_preview":null,"ip":"198.51.100.4","user_agent":"Mozilla/5.0 ..."}
 ```
 
 `fingerprint` is the first 12 hex of `HMAC-SHA256(candidate, CHAT_BOT_SECRET)`.
 It is stable, so the same token always produces the same fingerprint and repeats
 are countable, but it cannot be reversed and it cannot be attacked with a
-rainbow table without the secret.
+rainbow table without the secret. It is also printed next to the label on the
+token page, which is how a log line maps back to a person.
 
-`chat-api` prints the fingerprint of the live token on startup, so you can tell
-which entries are your real link:
+`reason` is why a rejected attempt failed: `unknown`, `revoked` or `expired`.
+The last two are worth watching — they mean somebody is still trying a link you
+already cut off.
 
-```
-active chat_bot_token fingerprint: c64decc61ba4
-```
-
-`token_preview` holds the first 12 characters, **only on rejected attempts** —
-enough to recognise probing like `admin` or `test123`. On an accepted attempt it
-is `null`, so a valid token never reaches disk in readable form.
+`token_preview` holds the first 12 characters, **only when the token is not one
+of yours**. A wrong guess like `admin` or `test123` is worth recognising; a real
+token that happens to be revoked is still a real token, so it is logged by label
+instead and never in readable form.
 
 Forged session tokens are logged the same way, as `session_rejected`.
 
@@ -404,8 +502,9 @@ docker compose logs chat-api | grep '"accepted": true' | jq -r .ip | sort -u
 
 **What this does not do:** the token is in the URL, so it is in browser history
 and in the recruiter's clipboard. Treat it as a shared password for a link, not
-as per-person authentication. Anyone you send it to can forward it. Rotate it
-when a search is over.
+as per-person authentication. Anyone you send it to can forward it — one link
+per person makes it obvious *whose* link travelled, not that it cannot travel.
+Give each one an expiry, and revoke it when the conversation is over.
 
 ## What the backend enforces
 

@@ -24,15 +24,47 @@ function required(name) {
   return value;
 }
 
+// Same length rule, but absence is allowed. Used for the original single
+// access token, which is now optional: tokens are managed on the admin page.
+function optional(name) {
+  const value = process.env[name] ?? '';
+  if (value && value.length < 16) {
+    throw new Error(`${name} must be at least 16 characters when set. See README.`);
+  }
+  return value;
+}
+
+function flag(name, fallback) {
+  const value = (process.env[name] ?? '').trim().toLowerCase();
+  if (!value) return fallback;
+  return value !== 'false' && value !== '0' && value !== 'off';
+}
+
 export const config = {
   host: process.env.HOST ?? '127.0.0.1',
   port: int('PORT', 3000),
   allowedOrigins: list('ALLOWED_ORIGINS'),
 
   access: {
-    token: required('CHAT_BOT_TOKEN'),
+    // The original single token. Still accepted, so links already sent keep
+    // working, but it cannot be revoked without a restart — that is exactly
+    // what the managed tokens below fix. Leave it unset once they are in use.
+    token: optional('CHAT_BOT_TOKEN'),
     secret: required('CHAT_BOT_SECRET'),
-    sessionTtlSeconds: int('CHAT_SESSION_TTL', 43200)
+    sessionTtlSeconds: int('CHAT_SESSION_TTL', 43200),
+    storePath: process.env.TOKEN_STORE_PATH ?? path.join(repoRoot, 'data/tokens.json')
+  },
+
+  // The token admin page. It listens on its own port, which is deliberately
+  // not in the Kubernetes Service and not behind HAProxy, so the edge has
+  // nothing to route to it. Reach it over kubectl port-forward, or on
+  // localhost when running with docker compose.
+  admin: {
+    enabled: flag('ADMIN_ENABLED', true),
+    host: process.env.ADMIN_HOST ?? '127.0.0.1',
+    port: int('ADMIN_PORT', 3001),
+    // Used only to build the link shown after a token is created.
+    siteUrl: (process.env.PUBLIC_SITE_URL ?? '').replace(/\/+$/, '')
   },
 
   ollama: {
@@ -86,6 +118,7 @@ export const config = {
     persona: process.env.PERSONA_PATH ?? path.join(repoRoot, 'prompts/persona.md'),
     reminder: process.env.REMINDER_PATH ?? path.join(repoRoot, 'prompts/reminder.md'),
     knowledge: process.env.KNOWLEDGE_PATH ?? path.join(repoRoot, 'knowledge'),
-    public: process.env.PUBLIC_PATH ?? path.join(repoRoot, 'frontend/public')
+    public: process.env.PUBLIC_PATH ?? path.join(repoRoot, 'frontend/public'),
+    admin: process.env.ADMIN_PATH ?? path.join(repoRoot, 'frontend/admin')
   }
 };

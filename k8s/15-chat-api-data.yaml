@@ -1,0 +1,17 @@
+# The only state this app has: the access tokens the admin page manages.
+# Without a volume they would live in the container filesystem and every
+# rollout — including the theme demo's — would throw them away.
+#
+# No storageClassName, so k3s uses its default local-path provisioner. That is
+# a directory on the node, which is the right shape here: one node, one replica.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chat-api-data
+  namespace: hire-jose
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 64Mi

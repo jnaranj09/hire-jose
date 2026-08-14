@@ -17,6 +17,16 @@ data:
   OLLAMA_MODEL: "hire-jose"
 
   CHAT_SESSION_TTL: "43200"
+
+  # The token admin page. It binds inside the pod only, is not in the Service
+  # and is not in the tunnel, so the one way in is a port-forward:
+  #   kubectl -n hire-jose port-forward deploy/chat-api 3001:3001
+  ADMIN_ENABLED: "true"
+  ADMIN_HOST: "127.0.0.1"
+  ADMIN_PORT: "3001"
+  # Only used to build the link the page shows after creating a token.
+  PUBLIC_SITE_URL: "https://demo.josenaranjo.website"
+
   MAX_REQUEST_LENGTH: "4000"
   MAX_ANSWER_SENTENCES: "4"
   RATE_LIMIT_REQUESTS: "20"

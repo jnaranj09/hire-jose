@@ -1,3 +1,6 @@
 .env
 node_modules/
 npm-debug.log*
+
+# Access tokens, written at runtime. Hashes only, but still not for git.
+data/
