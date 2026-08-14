@@ -31,7 +31,7 @@ spec:
           # and rolls it. Tagged by commit, never :latest, so whatever is
           # running can always be traced back to one.
           # scripts/load-images.sh still works for local hacking.
-          image: ghcr.io/jnaranj09/hire-jose-chat-api:68508af
+          image: ghcr.io/jnaranj09/hire-jose-chat-api:36ea0a6
           env:
             # ---- the demo switch ---------------------------------------
             # "default" = the dark palette. "paper" = the light one.
